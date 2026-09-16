@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Customer Feedback → Action</title>
+<style>
+  :root {
+    color-scheme: light dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 64px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Pretendard, sans-serif;
+    background: #f7f7f5;
+    color: #1a1a1a;
+    line-height: 1.5;
+  }
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 1.6rem;
+    margin-bottom: 4px;
+  }
+  p.desc {
+    color: #555;
+    margin-top: 0;
+    margin-bottom: 24px;
+    white-space: pre-line;
+  }
+  section.card {
+    background: #fff;
+    border: 1px solid #e2e2e0;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .field-hint {
+    font-size: 0.85rem;
+    color: #777;
+    margin: 6px 0 16px;
+  }
+  input[type="file"] {
+    display: block;
+    width: 100%;
+    padding: 10px 0;
+  }
+  button {
+    font-size: 1rem;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+  }
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  #analyzeBtn {
+    background: #1a1a1a;
+    color: #fff;
+    width: 100%;
+    margin-top: 8px;
+  }
+  #status {
+    margin-top: 14px;
+    font-size: 0.95rem;
+    color: #444;
+  }
+  #errorBox {
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: #fdecec;
+    color: #a3241f;
+    font-size: 0.92rem;
+  }
+  #resultSection h2 {
+    font-size: 1.15rem;
+    margin: 28px 0 10px;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 6px;
+  }
+  #resultSection h2:first-of-type {
+    margin-top: 0;
+  }
+  #resultSection ul {
+    padding-left: 20px;
+    margin: 0;
+  }
+  #resultSection li {
+    margin-bottom: 8px;
+  }
+  .theme-count {
+    color: #888;
+    font-size: 0.85rem;
+  }
+  .action-card {
+    border: 1px solid #e2e2e0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+  .action-card h3 {
+    margin: 0 0 8px;
+    font-size: 1rem;
+  }
+  .action-card .label {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #555;
+    display: block;
+    margin-top: 8px;
+  }
+  .evidence-item {
+    font-size: 0.9rem;
+    color: #333;
+    background: #f7f7f5;
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin: 4px 0;
+  }
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  .btn-row button {
+    background: #f0f0ee;
+    color: #1a1a1a;
+    border: 1px solid #ddd;
+  }
+  #copyFeedback {
+    font-size: 0.85rem;
+    color: #2a7a2a;
+    margin-left: 4px;
+  }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Customer Feedback → Action</h1>
+  <p class="desc">고객 리뷰 CSV를 넣으면
+반복되는 고객 의견을 분석해 무엇부터 개선해야 하는지 정리합니다.</p>
+
+  <section class="card">
+    <input type="file" id="csvFile" accept=".csv,text/csv" />
+    <p class="field-hint">필수 컬럼: review · 최대 300개 리뷰</p>
+    <button id="analyzeBtn" type="button">분석하기</button>
+    <p id="status" hidden></p>
+    <div id="errorBox" hidden></div>
+  </section>
+
+  <section class="card" id="resultCard" hidden>
+    <div id="resultSection"></div>
+    <div class="btn-row">
+      <button id="copyBtn" type="button">결과 복사</button>
+      <button id="downloadBtn" type="button">Markdown 다운로드</button>
+      <span id="copyFeedback" hidden>복사되었습니다.</span>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  var fileInput = document.getElementById('csvFile');
+  var analyzeBtn = document.getElementById('analyzeBtn');
+  var statusEl = document.getElementById('status');
+  var errorBox = document.getElementById('errorBox');
+  var resultCard = document.getElementById('resultCard');
+  var resultSection = document.getElementById('resultSection');
+  var copyBtn = document.getElementById('copyBtn');
+  var downloadBtn = document.getElementById('downloadBtn');
+  var copyFeedback = document.getElementById('copyFeedback');
+
+  var isAnalyzing = false;
+  var lastMarkdown = null;
+
+  function showError(msg) {
+    errorBox.hidden = false;
+    errorBox.textContent = msg;
+  }
+
+  function clearError() {
+    errorBox.hidden = true;
+    errorBox.textContent = '';
+  }
+
+  function setBusy(busy) {
+    isAnalyzing = busy;
+    analyzeBtn.disabled = busy;
+    fileInput.disabled = busy;
+    statusEl.hidden = !busy;
+    if (busy) statusEl.textContent = '고객 리뷰를 분석하고 있습니다... (10~30초 정도 걸릴 수 있습니다)';
+  }
+
+  function renderBulletSection(title, items) {
+    var h2 = document.createElement('h2');
+    h2.textContent = title;
+    resultSection.appendChild(h2);
+    var ul = document.createElement('ul');
+    if (!items || items.length === 0) {
+      var li = document.createElement('li');
+      li.textContent = '해당 내용이 발견되지 않았습니다.';
+      ul.appendChild(li);
+    } else {
+      items.forEach(function (it) {
+        var li = document.createElement('li');
+        var count = document.createElement('span');
+        count.className = 'theme-count';
+        count.textContent = ' (' + it.mention_count + '건)';
+        li.textContent = it.theme + ' — ' + it.sentence;
+        li.appendChild(count);
+        ul.appendChild(li);
+      });
+    }
+    resultSection.appendChild(ul);
+  }
+
+  function renderActions(actions) {
+    var h2 = document.createElement('h2');
+    h2.textContent = '개선 Action TOP 5';
+    resultSection.appendChild(h2);
+
+    if (!actions || actions.length === 0) {
+      var p = document.createElement('p');
+      p.textContent = '반복되는 불만/요청이 없어 제안할 Action이 없습니다.';
+      resultSection.appendChild(p);
+      return;
+    }
+
+    actions.forEach(function (a, idx) {
+      var card = document.createElement('div');
+      card.className = 'action-card';
+
+      var h3 = document.createElement('h3');
+      h3.textContent = (idx + 1) + '. ' + a.problem + ' (' + a.mention_count + '건)';
+      card.appendChild(h3);
+
+      var why = document.createElement('span');
+      why.className = 'label';
+      why.textContent = 'Why it matters';
+      card.appendChild(why);
+      var whyText = document.createElement('div');
+      whyText.textContent = a.why_it_matters;
+      card.appendChild(whyText);
+
+      var evLabel = document.createElement('span');
+      evLabel.className = 'label';
+      evLabel.textContent = 'Evidence';
+      card.appendChild(evLabel);
+      (a.evidence || []).forEach(function (ev) {
+        var evDiv = document.createElement('div');
+        evDiv.className = 'evidence-item';
+        evDiv.textContent = '"' + ev.text + '"';
+        card.appendChild(evDiv);
+      });
+
+      var rec = document.createElement('span');
+      rec.className = 'label';
+      rec.textContent = 'Recommended action';
+      card.appendChild(rec);
+      var recText = document.createElement('div');
+      recText.textContent = a.recommended_action;
+      card.appendChild(recText);
+
+      resultSection.appendChild(card);
+    });
+  }
+
+  function renderResult(result) {
+    resultSection.innerHTML = '';
+    renderBulletSection('고객이 좋아하는 이유', result.likes);
+    renderBulletSection('반복되는 불만', result.complaints);
+    renderBulletSection('고객이 원하는 것', result.requests);
+    renderBulletSection('주의해야 할 문제', result.watch_out);
+    renderActions(result.actions);
+    resultCard.hidden = false;
+  }
+
+  analyzeBtn.addEventListener('click', function () {
+    if (isAnalyzing) return;
+    clearError();
+    resultCard.hidden = true;
+
+    var file = fileInput.files[0];
+    if (!file) {
+      showError('CSV 파일을 선택해주세요.');
+      return;
+    }
+
+    setBusy(true);
+
+    file.text().then(function (text) {
+      return fetch('/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/csv; charset=utf-8' },
+        body: text,
+      });
+    }).then(function (res) {
+      return res.json();
+    }).then(function (data) {
+      if (!data.ok) {
+        showError(data.message || '분석 중 오류가 발생했습니다.');
+        return;
+      }
+      lastMarkdown = data.markdown;
+      renderResult(data.result);
+    }).catch(function () {
+      showError('서버와 통신 중 오류가 발생했습니다.');
+    }).finally(function () {
+      setBusy(false);
+    });
+  });
+
+  copyBtn.addEventListener('click', function () {
+    if (!lastMarkdown) return;
+    navigator.clipboard.writeText(lastMarkdown).then(function () {
+      copyFeedback.hidden = false;
+      setTimeout(function () { copyFeedback.hidden = true; }, 2000);
+    }).catch(function () {
+      showError('복사에 실패했습니다.');
+    });
+  });
+
+  downloadBtn.addEventListener('click', function () {
+    if (!lastMarkdown) return;
+    var blob = new Blob([lastMarkdown], { type: 'text/markdown;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'customer-feedback-action.md';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+})();
+</script>
+</body>
+</html>
