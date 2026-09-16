@@ -18,9 +18,10 @@ function buildClassifyPrompt(reviews) {
     'Classify each customer review below.\n\n' +
     'For each review, determine:\n' +
     '- category: exactly one of "praise", "complaint", "request", "neutral"\n' +
-    '- theme: a short 2-5 word label for the specific topic (e.g. "shipping speed", ' +
-    '"packaging quality", "app crashes"). Use the SAME theme label (verbatim) for reviews ' +
-    'that describe the same underlying topic, so they can be grouped later.\n\n' +
+    '- theme: a short 2-5 word label for the specific topic, ALWAYS written in Korean ' +
+    'regardless of what language the review itself is in (e.g. "배송 속도", "포장 품질", ' +
+    '"앱 충돌"). Use the SAME Korean theme label (verbatim) for reviews that describe the ' +
+    'same underlying topic, so they can be grouped later.\n\n' +
     'Return strictly this JSON shape and nothing else:\n' +
     '{"classifications":[{"id": <number>, "category": "<praise|complaint|request|neutral>", "theme": "<short label>"}]}\n\n' +
     'Every id below must appear exactly once in your response. Do not include review text ' +
@@ -47,12 +48,14 @@ function buildInterpretPrompt({ insightThemes, actionThemes }) {
   return (
     'You are given aggregated review themes (already counted and grouped by code — ' +
     'do not recompute or restate counts).\n\n' +
-    'TASK 1 — for every theme in INSIGHT_THEMES, write one plain sentence (in the same ' +
-    'language as the reviews) summarizing what customers are saying about it, grounded ' +
-    'only in the evidence text given.\n\n' +
-    'TASK 2 — for every theme in ACTION_THEMES, write:\n' +
-    '- why_it_matters: one sentence on why this matters to the business\n' +
-    '- recommended_action: one concrete, specific action to address it\n\n' +
+    'Write ALL output text in Korean, regardless of what language the evidence text below ' +
+    'is written in. The evidence is for your understanding only — never quote, translate, ' +
+    'or reproduce it in your output.\n\n' +
+    'TASK 1 — for every theme in INSIGHT_THEMES, write one plain Korean sentence ' +
+    'summarizing what customers are saying about it, grounded only in the evidence text given.\n\n' +
+    'TASK 2 — for every theme in ACTION_THEMES, write in Korean:\n' +
+    '- why_it_matters: one Korean sentence on why this matters to the business\n' +
+    '- recommended_action: one concrete, specific Korean sentence describing the action to take\n\n' +
     'Return strictly this JSON shape and nothing else:\n' +
     '{"insights":[{"theme_id":"<id>","sentence":"<...>"}],' +
     '"actions":[{"theme_id":"<id>","why_it_matters":"<...>","recommended_action":"<...>"}]}\n\n' +
@@ -158,42 +161,42 @@ function assembleResult({ themes, likes, complaints, requests, watchOut, actionT
 
 function renderMarkdown(result, { totalReviews, blankSkipped }) {
   const lines = [];
-  lines.push('# Customer Feedback → Action Report');
+  lines.push('# 고객 리뷰 → 개선 Action Report');
   lines.push('');
-  lines.push(`Reviews analyzed: ${totalReviews} (blank rows skipped: ${blankSkipped})`);
+  lines.push(`분석한 리뷰 수: ${totalReviews}건 (빈 리뷰 ${blankSkipped}건 제외)`);
   lines.push('');
 
   lines.push('## 1. 고객이 좋아하는 이유');
-  if (result.likes.length === 0) lines.push('- (no praise themes found)');
-  for (const l of result.likes) lines.push(`- **${l.theme}** (${l.mention_count} mentions) — ${l.sentence}`);
+  if (result.likes.length === 0) lines.push('- (칭찬 관련 항목 없음)');
+  for (const l of result.likes) lines.push(`- **${l.theme}** (${l.mention_count}건 언급) — ${l.sentence}`);
   lines.push('');
 
   lines.push('## 2. 반복되는 불만');
-  if (result.complaints.length === 0) lines.push('- (no complaint themes found)');
-  for (const l of result.complaints) lines.push(`- **${l.theme}** (${l.mention_count} mentions) — ${l.sentence}`);
+  if (result.complaints.length === 0) lines.push('- (불만 관련 항목 없음)');
+  for (const l of result.complaints) lines.push(`- **${l.theme}** (${l.mention_count}건 언급) — ${l.sentence}`);
   lines.push('');
 
   lines.push('## 3. 고객이 원하는 것');
-  if (result.requests.length === 0) lines.push('- (no request themes found)');
-  for (const l of result.requests) lines.push(`- **${l.theme}** (${l.mention_count} mentions) — ${l.sentence}`);
+  if (result.requests.length === 0) lines.push('- (요청 관련 항목 없음)');
+  for (const l of result.requests) lines.push(`- **${l.theme}** (${l.mention_count}건 언급) — ${l.sentence}`);
   lines.push('');
 
   lines.push('## 4. 주의해야 할 문제');
-  if (result.watch_out.length === 0) lines.push('- (none — no lower-frequency recurring issues beyond the top themes)');
-  for (const l of result.watch_out) lines.push(`- **${l.theme}** (${l.mention_count} mentions) — ${l.sentence}`);
+  if (result.watch_out.length === 0) lines.push('- (없음 — 상위 항목 외에 반복되는 저빈도 이슈 없음)');
+  for (const l of result.watch_out) lines.push(`- **${l.theme}** (${l.mention_count}건 언급) — ${l.sentence}`);
   lines.push('');
 
   lines.push('## 5. 개선 Action TOP 5');
-  if (result.actions.length === 0) lines.push('- (no complaint/request themes found — nothing to act on)');
+  if (result.actions.length === 0) lines.push('- (불만/요청 항목이 없어 제안할 Action 없음)');
   result.actions.forEach((a, idx) => {
     lines.push(`### ${idx + 1}. ${a.problem}`);
-    lines.push(`- Mention count: ${a.mention_count}`);
-    lines.push(`- Why it matters: ${a.why_it_matters}`);
-    lines.push(`- Evidence:`);
+    lines.push(`- 언급 수: ${a.mention_count}건`);
+    lines.push(`- 왜 중요한가: ${a.why_it_matters}`);
+    lines.push(`- 실제 리뷰 근거:`);
     for (const e of a.evidence) {
       lines.push(`  - [review_id ${e.review_id}] "${e.text}"`);
     }
-    lines.push(`- Recommended action: ${a.recommended_action}`);
+    lines.push(`- 추천 개선안: ${a.recommended_action}`);
     lines.push('');
   });
 
