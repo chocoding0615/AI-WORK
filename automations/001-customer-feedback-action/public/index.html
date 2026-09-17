@@ -140,9 +140,32 @@
     margin-left: 4px;
   }
   [hidden] { display: none !important; }
+  .shell-nav {
+    max-width: 720px;
+    margin: 0 auto 16px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 0.85rem;
+  }
+  .shell-nav .brand { font-weight: 700; margin-right: 8px; }
+  .shell-nav a {
+    color: #555;
+    text-decoration: none;
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+  .shell-nav a.current { background: #1a1a1a; color: #fff; }
 </style>
 </head>
 <body>
+<nav class="shell-nav">
+  <span class="brand">AI-WORK</span>
+  <a class="current" href="/001/">#001 Customer Feedback → Action</a>
+  <a href="/002/">#002 Sales Data → Anomaly & Action</a>
+  <a href="/003/">#003 Expense → Recurring Cost & Action</a>
+  <a href="/004/">#004 Meeting → Decision & Action</a>
+</nav>
 <main>
   <h1>Customer Feedback → Action</h1>
   <p class="desc">고객 리뷰 CSV를 넣으면
@@ -297,7 +320,9 @@
     setBusy(true);
 
     file.text().then(function (text) {
-      return fetch('/analyze', {
+      // Relative (not "/analyze") so this works both standalone (page at "/")
+      // and mounted under the AI-WORK shell (page at "/001/").
+      return fetch('analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'text/csv; charset=utf-8' },
         body: text,

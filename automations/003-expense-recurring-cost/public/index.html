@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Expense CSV → Recurring Cost & Action</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 64px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Pretendard, sans-serif;
+    background: #f7f7f5;
+    color: #1a1a1a;
+    line-height: 1.5;
+  }
+  main {
+    max-width: 760px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 1.6rem;
+    margin-bottom: 4px;
+  }
+  p.desc {
+    color: #555;
+    margin-top: 0;
+    margin-bottom: 24px;
+    white-space: pre-line;
+  }
+  section.card {
+    background: #fff;
+    border: 1px solid #e2e2e0;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .field-hint {
+    font-size: 0.85rem;
+    color: #777;
+    margin: 6px 0 16px;
+  }
+  input[type="file"] {
+    display: block;
+    width: 100%;
+    padding: 10px 0;
+  }
+  button {
+    font-size: 1rem;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+  }
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  #analyzeBtn {
+    background: #1a1a1a;
+    color: #fff;
+    width: 100%;
+    margin-top: 8px;
+  }
+  #status {
+    margin-top: 14px;
+    font-size: 0.95rem;
+    color: #444;
+  }
+  #errorBox {
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: #fdecec;
+    color: #a3241f;
+    font-size: 0.92rem;
+  }
+  #summaryBox {
+    font-size: 0.95rem;
+    color: #333;
+  }
+  #summaryBox div { margin-bottom: 4px; }
+  #resultSection h2 {
+    font-size: 1.15rem;
+    margin: 28px 0 10px;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 6px;
+  }
+  .candidate-card {
+    border: 1px solid #e2e2e0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+  .candidate-card h3 {
+    margin: 0 0 8px;
+    font-size: 1rem;
+  }
+  .candidate-card .label {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #555;
+    display: block;
+    margin-top: 8px;
+  }
+  .candidate-card .metrics {
+    font-size: 0.9rem;
+    color: #333;
+  }
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  .btn-row button {
+    background: #f0f0ee;
+    color: #1a1a1a;
+    border: 1px solid #ddd;
+  }
+  #copyFeedback {
+    font-size: 0.85rem;
+    color: #2a7a2a;
+    margin-left: 4px;
+  }
+  [hidden] { display: none !important; }
+  .shell-nav {
+    max-width: 760px;
+    margin: 0 auto 16px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 0.85rem;
+  }
+  .shell-nav .brand { font-weight: 700; margin-right: 8px; }
+  .shell-nav a {
+    color: #555;
+    text-decoration: none;
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+  .shell-nav a.current { background: #1a1a1a; color: #fff; }
+  .example-box {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #eee;
+  }
+  .example-box .label {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #555;
+    display: block;
+    margin-bottom: 6px;
+  }
+  .example-box pre {
+    background: #f7f7f5;
+    border: 1px solid #e2e2e0;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 0.82rem;
+    overflow-x: auto;
+    margin: 0 0 8px;
+  }
+  .example-box .example-hint {
+    font-size: 0.85rem;
+    color: #777;
+    margin: 0 0 10px;
+  }
+  #exampleDownloadBtn {
+    background: #f0f0ee;
+    color: #1a1a1a;
+    border: 1px solid #ddd;
+  }
+</style>
+</head>
+<body>
+<nav class="shell-nav">
+  <span class="brand">AI-WORK</span>
+  <a href="/001/">#001 Customer Feedback → Action</a>
+  <a href="/002/">#002 Sales Data → Anomaly & Action</a>
+  <a class="current" href="/003/">#003 Expense → Recurring Cost & Action</a>
+  <a href="/004/">#004 Meeting → Decision & Action</a>
+</nav>
+<main>
+  <h1>Expense CSV → Recurring Cost & Action</h1>
+  <p class="desc">지출/결제 내역 CSV를 넣으면 매월 비슷한 시기에 반복되는
+지출 후보를 찾아 확인할 것을 정리합니다.</p>
+
+  <section class="card">
+    <input type="file" id="csvFile" accept=".csv,text/csv" />
+    <p class="field-hint">필수 컬럼: date/날짜, merchant/가맹점명, amount/금액 · 최대 10,000행 · 5MB · 최소 3개월 이상 데이터 필요</p>
+    <button id="analyzeBtn" type="button">지출 분석</button>
+    <p id="status" hidden></p>
+    <div id="errorBox" hidden></div>
+
+    <div class="example-box">
+      <span class="label">입력 예시</span>
+      <pre>date        merchant     amount
+2026-06-14  넷플릭스      13500
+2026-07-15  넷플릭스      13500
+2026-06-03  스타벅스      5000</pre>
+      <p class="example-hint">최소 3개월 이상의 거래 데이터가 필요합니다.</p>
+      <button id="exampleDownloadBtn" type="button">예제 CSV 다운로드</button>
+    </div>
+  </section>
+
+  <section class="card" id="resultCard" hidden>
+    <div id="summaryBox"></div>
+    <div id="resultSection"></div>
+    <div class="btn-row">
+      <button id="copyBtn" type="button">결과 복사</button>
+      <button id="downloadBtn" type="button">Markdown 다운로드</button>
+      <span id="copyFeedback" hidden>복사되었습니다.</span>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  var fileInput = document.getElementById('csvFile');
+  var analyzeBtn = document.getElementById('analyzeBtn');
+  var statusEl = document.getElementById('status');
+  var errorBox = document.getElementById('errorBox');
+  var resultCard = document.getElementById('resultCard');
+  var summaryBox = document.getElementById('summaryBox');
+  var resultSection = document.getElementById('resultSection');
+  var copyBtn = document.getElementById('copyBtn');
+  var downloadBtn = document.getElementById('downloadBtn');
+  var copyFeedback = document.getElementById('copyFeedback');
+  var exampleDownloadBtn = document.getElementById('exampleDownloadBtn');
+
+  // A real, self-sufficient sample: 4 distinct months, one merchant recurring
+  // on a similar day each month (variable amount), one merchant scattered
+  // across random days (not recurring). Re-uploading this file as-is
+  // produces a real Result with at least one recurring candidate.
+  var EXAMPLE_CSV =
+    'date,merchant,amount\n' +
+    '2026-06-14,넷플릭스,13500\n' +
+    '2026-07-15,넷플릭스,13500\n' +
+    '2026-08-16,넷플릭스,13500\n' +
+    '2026-09-15,넷플릭스,17000\n' +
+    '2026-06-03,스타벅스,5000\n' +
+    '2026-07-18,스타벅스,4500\n' +
+    '2026-08-27,스타벅스,6000\n' +
+    '2026-09-09,스타벅스,5200\n';
+
+  var isAnalyzing = false;
+  var lastMarkdown = null;
+
+  function showError(msg) {
+    errorBox.hidden = false;
+    errorBox.textContent = msg;
+  }
+
+  function clearError() {
+    errorBox.hidden = true;
+    errorBox.textContent = '';
+  }
+
+  function setBusy(busy) {
+    isAnalyzing = busy;
+    analyzeBtn.disabled = busy;
+    fileInput.disabled = busy;
+    statusEl.hidden = !busy;
+    if (busy) statusEl.textContent = '지출 데이터를 분석하고 있습니다... (10~30초 정도 걸릴 수 있습니다)';
+  }
+
+  function won(n) {
+    return Math.round(n).toLocaleString('ko-KR') + '원';
+  }
+
+  function renderSummary(data) {
+    summaryBox.innerHTML = '';
+    var s = data.summary;
+    var lines = [
+      '분석 기간: ' + s.analyzedPeriod.start + ' ~ ' + s.analyzedPeriod.end,
+      '총 거래 수: ' + s.totalTransactions + '건',
+      '월 반복 지출 후보 수: ' + s.recurringCandidateCount + '건',
+      '월 평균 반복비: ' + won(s.averageMonthlyRecurringTotal),
+      '연 환산 예상 반복비: ' + won(s.annualizedRecurringTotal),
+    ];
+    lines.forEach(function (text) {
+      var div = document.createElement('div');
+      div.textContent = text;
+      summaryBox.appendChild(div);
+    });
+  }
+
+  function renderCandidates(candidates) {
+    resultSection.innerHTML = '';
+    var h2 = document.createElement('h2');
+    h2.textContent = '반복 지출 후보';
+    resultSection.appendChild(h2);
+
+    if (!candidates || candidates.length === 0) {
+      var p = document.createElement('p');
+      p.textContent = '설정된 기준에서 월 반복 지출 후보가 발견되지 않았습니다.';
+      resultSection.appendChild(p);
+      return;
+    }
+
+    candidates.forEach(function (c, idx) {
+      var card = document.createElement('div');
+      card.className = 'candidate-card';
+
+      var h3 = document.createElement('h3');
+      h3.textContent = (idx + 1) + '. ' + c.merchant;
+      card.appendChild(h3);
+
+      var monthlyText = c.monthlyAmounts.map(function (m) { return m.month + ' ' + won(m.amount); }).join(', ');
+
+      var metrics = document.createElement('div');
+      metrics.className = 'metrics';
+      metrics.innerHTML =
+        '반복 개월 수: ' + c.recurringMonths + '개월<br>' +
+        '주요 결제일: ' + c.typicalPaymentDay + '일 (범위: ' + c.paymentDayRange.min + '~' + c.paymentDayRange.max + '일)<br>' +
+        '월별 금액: ' + monthlyText + '<br>' +
+        '월 평균: ' + won(c.averageMonthlyAmount) + '<br>' +
+        '최근 월 금액: ' + won(c.latestMonthAmount) + '<br>' +
+        '누적 지출: ' + won(c.totalAmount) + '<br>' +
+        '연 환산: ' + won(c.annualizedAmount);
+      card.appendChild(metrics);
+
+      var aiLabel = document.createElement('span');
+      aiLabel.className = 'label';
+      aiLabel.textContent = 'AI 확인사항';
+      card.appendChild(aiLabel);
+      var aiText = document.createElement('div');
+      aiText.textContent = c.interpretation;
+      card.appendChild(aiText);
+
+      var actionLabel = document.createElement('span');
+      actionLabel.className = 'label';
+      actionLabel.textContent = '추천 Action';
+      card.appendChild(actionLabel);
+      var actionText = document.createElement('div');
+      actionText.textContent = c.recommendedAction;
+      card.appendChild(actionText);
+
+      resultSection.appendChild(card);
+    });
+  }
+
+  analyzeBtn.addEventListener('click', function () {
+    if (isAnalyzing) return;
+    clearError();
+    resultCard.hidden = true;
+
+    var file = fileInput.files[0];
+    if (!file) {
+      showError('CSV 파일을 선택해주세요.');
+      return;
+    }
+
+    setBusy(true);
+
+    file.text().then(function (text) {
+      // Relative (not "/analyze") so this works both standalone (page at "/")
+      // and mounted under the AI-WORK shell (page at "/003/").
+      return fetch('analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/csv; charset=utf-8' },
+        body: text,
+      });
+    }).then(function (res) {
+      return res.json();
+    }).then(function (data) {
+      if (!data.ok) {
+        showError(data.message || '분석 중 오류가 발생했습니다.');
+        return;
+      }
+      lastMarkdown = data.markdown;
+      renderSummary(data);
+      renderCandidates(data.candidates);
+      resultCard.hidden = false;
+    }).catch(function () {
+      showError('서버와 통신 중 오류가 발생했습니다.');
+    }).finally(function () {
+      setBusy(false);
+    });
+  });
+
+  copyBtn.addEventListener('click', function () {
+    if (!lastMarkdown) return;
+    navigator.clipboard.writeText(lastMarkdown).then(function () {
+      copyFeedback.hidden = false;
+      setTimeout(function () { copyFeedback.hidden = true; }, 2000);
+    }).catch(function () {
+      showError('복사에 실패했습니다.');
+    });
+  });
+
+  downloadBtn.addEventListener('click', function () {
+    if (!lastMarkdown) return;
+    var blob = new Blob([lastMarkdown], { type: 'text/markdown;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'expense-recurring-cost.md';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  exampleDownloadBtn.addEventListener('click', function () {
+    // Leading UTF-8 BOM so Excel/legacy text viewers on Windows don't guess
+    // the system codepage (e.g. CP949) for a BOM-less file and mangle the
+    // Korean merchant names — the CSV bytes themselves are already UTF-8
+    // either way, this only removes the ambiguity for other tools reading it.
+    var blob = new Blob(['﻿' + EXAMPLE_CSV], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'expense-recurring-example.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+})();
+</script>
+</body>
+</html>

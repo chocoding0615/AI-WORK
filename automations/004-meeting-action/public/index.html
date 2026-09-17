@@ -137,9 +137,32 @@
     color: #2a7a2a;
   }
   [hidden] { display: none !important; }
+  .shell-nav {
+    max-width: 760px;
+    margin: 0 auto 16px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 0.85rem;
+  }
+  .shell-nav .brand { font-weight: 700; margin-right: 8px; }
+  .shell-nav a {
+    color: #555;
+    text-decoration: none;
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+  .shell-nav a.current { background: #1a1a1a; color: #fff; }
 </style>
 </head>
 <body>
+<nav class="shell-nav">
+  <span class="brand">AI-WORK</span>
+  <a href="/001/">#001 Customer Feedback → Action</a>
+  <a href="/002/">#002 Sales Data → Anomaly & Action</a>
+  <a href="/003/">#003 Expense → Recurring Cost & Action</a>
+  <a class="current" href="/004/">#004 Meeting → Decision & Action</a>
+</nav>
 <main>
   <h1>Meeting → Decision & Action</h1>
   <p class="desc">회의 내용을 붙여넣으면 결정사항, 해야 할 일(담당자/기한), 확인이
