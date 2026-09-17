@@ -149,36 +149,24 @@
 <style>
 body{padding:0;background:#f3f5f7}.product-header{background:#102a43;color:#fff}.header-inner{max-width:1040px;margin:auto;padding:20px}.header-top{display:flex;justify-content:space-between;gap:20px}.product-header .eyebrow{color:#c8d5e2;font-size:12px;font-weight:700;letter-spacing:.08em}.product-header .number{display:inline-grid;place-items:center;width:30px;height:30px;border:1px solid #8ba1b5;border-radius:5px;margin-right:8px}.product-header h1{font-size:25px;margin:8px 0 2px}.product-header .desc{color:#c8d5e2;margin:0;font-size:14px}.header-state{color:#c8d5e2;font-size:13px;white-space:nowrap;padding-top:6px}.state-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#8ba1b5;margin-right:6px}.state-dot.done{background:#52d48b}.product-nav{display:flex;gap:4px;flex-wrap:wrap;margin-top:18px}.product-nav a{color:#c8d5e2;text-decoration:none;padding:7px 9px;border-bottom:3px solid transparent;font-size:12px}.product-nav a.current,.product-nav a:hover{color:#fff;border-bottom-color:#fff}.page-main{max-width:1040px;margin:auto;padding:24px 20px 64px}.page-main>h1,.page-main>p.desc{display:none}.page-main .card{box-shadow:none}.template-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}.template-kicker{color:#667085;font-size:11px;font-weight:800;letter-spacing:.12em}.result-heading{background:#e9edf1;margin:0 -20px;padding:22px 20px 0}.result-heading .card{border:0}.modal-backdrop{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:16px;background:rgba(11,32,51,.58)}.template-modal{width:min(720px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:8px}.template-modal-head{position:sticky;top:0;background:#fff;border-bottom:1px solid #dfe3e8;padding:16px;display:flex;justify-content:space-between}.template-modal-body{padding:0 16px}.template-modal-body .field{padding:14px 0;border-bottom:1px solid #dfe3e8}.template-modal-foot{padding:16px;display:flex;justify-content:flex-end;gap:8px}.template-modal .quote{white-space:pre-wrap;word-break:break-word}[hidden]{display:none!important}@media(max-width:700px){.header-inner{padding:16px 12px}.header-top{gap:8px}.product-header h1{font-size:21px}.product-nav{overflow-x:auto;flex-wrap:nowrap}.product-nav a{flex:0 0 auto}.page-main{padding:16px 12px 48px}.template-head{flex-direction:column}.result-heading{margin:0 -12px;padding:18px 12px 0}.modal-backdrop{padding:8px}.template-modal{max-height:calc(100vh - 16px)}}
 </style>
-<header class="product-header"><div class="header-inner"><div class="header-top"><div><div class="eyebrow"><span class="number">02</span>AI-WORK #002</div><h1>매출 이상 → 확인할 것</h1><p class="desc">최근 7일과 이전 7일을 비교해 확인이 필요한 매출 변화를 찾습니다.</p></div><div class="header-state" id="headerState"><span class="state-dot"></span>분석 대기</div></div><nav class="product-nav" aria-label="AI-WORK 도구 이동"><a href="/">홈</a><a href="/001/">#001 고객 피드백</a><a class="current" href="/002/" aria-current="page">#002 매출 이상</a><a href="/003/">#003 반복 지출</a><a href="/004/">#004 회의 정리</a><a href="/005/">#005 문의 우선순위</a></nav></div></header>
-<main class="page-main">
+<header class="product-header"><div class="header-inner page-shell"><div class="header-top"><div><div class="eyebrow"><span class="number">02</span>AI-WORK #002</div><h1>매출 이상 → 확인할 것</h1><p class="desc">최근 7일과 이전 7일을 비교해 확인이 필요한 매출 변화를 찾습니다.</p></div><div class="header-state" id="headerState"><span class="state-dot"></span>분석 대기</div></div><nav class="product-nav" aria-label="AI-WORK 도구 이동"><a href="/">홈</a><a href="/001/">#001 고객 피드백</a><a class="current" href="/002/" aria-current="page">#002 매출 이상</a><a href="/003/">#003 반복 지출</a><a href="/004/">#004 회의 정리</a><a href="/005/">#005 문의 우선순위</a></nav></div></header>
+<main class="page-main page-shell">
   <h1>매출 이상 탐지 &amp; 확인 액션</h1>
   <p class="desc">일자별 매출 CSV를 올리면 최근 7일과 그 이전 7일을 비교해 이상하게 변한 상품만 골라내고, 확인할 항목과 조치를 정리합니다.</p>
 
-  <section class="card">
-    <div class="template-kicker">INPUT</div><h2 class="section-title">일자별 매출 CSV</h2>
-    <div id="dropzone">
-      <div class="dz-main">CSV 파일을 여기에 끌어다 놓기</div>
-      <div class="dz-sub">또는 클릭해서 파일 선택 (.csv)</div>
-      <input type="file" id="csvFile" accept=".csv,text/csv" hidden />
+  <section class="card input-card section-inner">
+    <div class="template-head input-header"><div><div class="template-kicker">INPUT</div><h2 class="section-title">일자별 매출 CSV</h2></div><div class="input-actions"><button type="button" class="btn-secondary btn-small" id="loadSampleBtn">샘플 매출 불러오기</button><a href="sample.csv" download="sample-sales.csv" style="text-decoration:none"><button type="button" class="btn-secondary btn-small">샘플 CSV 다운로드</button></a></div></div>
+    <div class="input-layout">
+      <div class="input-file-panel" id="dropzone"><div class="dz-main">CSV 파일을 여기에 끌어다 놓기</div><div class="dz-sub">또는 클릭해서 파일 선택 (.csv)</div><input type="file" id="csvFile" accept=".csv,text/csv" hidden /></div>
+      <div class="input-info-panel"><div id="fileName" hidden></div><p class="field-hint">필수 열: <code>날짜/date</code> <code>상품명/product</code> <code>매출/sales</code> <code>수량/quantity</code> · 날짜는 YYYY-MM-DD · 최소 14일치 필요</p></div>
+      <div class="input-run-panel"><button id="analyzeBtn" type="button" class="btn-primary">분석하기</button></div>
     </div>
-    <div id="fileName" hidden></div>
-
-    <p class="field-hint">필수 열: <code>날짜/date</code> <code>상품명/product</code> <code>매출/sales</code> <code>수량/quantity</code> · 날짜는 YYYY-MM-DD · 최소 14일치 필요</p>
-
-    <div class="input-actions">
-      <button type="button" class="btn-secondary btn-small" id="loadSampleBtn">샘플 매출 불러오기</button>
-      <a href="sample.csv" download="sample-sales.csv" style="text-decoration:none">
-        <button type="button" class="btn-secondary btn-small">샘플 CSV 다운로드</button>
-      </a>
-    </div>
-
-    <button id="analyzeBtn" type="button" class="btn-primary">분석하기</button>
     <p id="status" hidden></p>
     <div id="errorBox" hidden></div>
     <div id="warnBox" hidden></div>
   </section>
 
-  <section class="result-heading" id="resultArea" hidden><div class="template-kicker">RESULT</div><div class="template-head"><h2 style="margin:2px 0 16px">오늘 확인할 매출 이상</h2><div><button type="button" class="btn-secondary btn-small" onclick="document.getElementById('copySummaryBtn').click()">이상 보고 복사</button><button type="button" class="btn-secondary btn-small" onclick="document.getElementById('downloadCsvBtn').click()">결과 CSV</button></div></div>
+  <section class="result-heading section-inner" id="resultArea" hidden><div class="template-kicker">RESULT</div><div class="template-head"><h2 style="margin:2px 0 16px">오늘 확인할 매출 이상</h2><div><button type="button" class="btn-secondary btn-small" onclick="document.getElementById('copySummaryBtn').click()">이상 보고 복사</button><button type="button" class="btn-secondary btn-small" onclick="document.getElementById('downloadCsvBtn').click()">결과 CSV</button></div></div>
   <section class="card" id="summaryCard" hidden>
     <h2 class="section-title">전체 현황</h2>
     <div class="stats" id="statsBox"></div>
@@ -231,6 +219,7 @@ body{padding:0;background:#f3f5f7}.product-header{background:#102a43;color:#fff}
   function setBusy(busy) {
     isAnalyzing = busy;
     analyzeBtn.disabled = busy;
+    analyzeBtn.textContent = busy ? '분석 중…' : '분석하기';
     statusEl.hidden = !busy;
     if (busy) statusEl.textContent = '매출 데이터를 분석하고 있습니다... (10~30초 정도 걸릴 수 있습니다)';
   }
@@ -507,5 +496,5 @@ body{padding:0;background:#f3f5f7}.product-header{background:#102a43;color:#fff}
 <script>
 (function(){var w=document.getElementById('anomalyTableWrap');w.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('button');if(!b)return;e.stopImmediatePropagation();var i=Array.prototype.indexOf.call(w.querySelectorAll('tbody tr'),b.closest('tr')),card=document.getElementById('anomalyBox').children[i];if(card)card.dispatchEvent(new MouseEvent('click',{bubbles:true}))},true)})();
 </script>
-<style id="template-width-final">.header-inner,.page-main{width:calc(100% - 48px);max-width:1760px}.header-inner{padding-left:0;padding-right:0}.page-main{padding-left:0;padding-right:0}.result-heading{margin-left:0;margin-right:0;padding-left:0;padding-right:0}@media(max-width:768px){.header-inner,.page-main{width:calc(100% - 32px)}.header-inner{padding-left:0;padding-right:0}.page-main{padding-left:0;padding-right:0}.result-heading{margin-left:0;margin-right:0;padding-left:0;padding-right:0}}</style></body>
-</html>
+
+<style id="template-layout-final">*{box-sizing:border-box}.page-shell{width:min(1728px,calc(100% - 48px));margin-inline:auto}.section-inner{padding-inline:40px}html,body{max-width:100%;overflow-x:hidden}.header-inner,.page-main,.page{width:min(1728px,calc(100% - 48px));max-width:none;margin-inline:auto}.header-inner{padding-left:0!important;padding-right:0!important}.page-main,.page{padding-left:0;padding-right:0}.input-card{padding:20px 40px!important}.input-header{align-items:flex-start}.input-actions,.input-head-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}.input-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr) minmax(180px,.45fr);gap:16px;align-items:stretch;margin-top:18px}.input-file-panel,.input-info-panel,.input-run-panel{min-width:0}.input-file-panel{display:flex;flex-direction:column}.input-file-panel#dropzone,.input-file-panel .dropzone{min-height:92px;height:100%}.input-info-panel{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:12px;align-content:center;min-height:92px}.input-info-panel .field-hint{margin:0;align-self:center}.input-run-panel{display:flex;align-items:stretch}.input-run-panel button{width:100%;height:100%;min-height:92px;margin:0!important}.input-text-panel textarea,.input-file-panel textarea{width:100%;height:100%;min-height:160px;resize:vertical}.input-card #status,.input-card #errorBox,.input-card #warnBox{margin:12px 0 0}.result-heading,.result-area{width:100%;margin:0!important;padding:22px 40px 0!important}.result-heading>.card,.result-area>.card{padding-left:0!important;padding-right:0!important}.result-heading>#summaryCard,.result-area>.card:first-of-type{border:0;background:transparent;box-shadow:none;padding-top:0!important;padding-bottom:16px!important}.result-heading>#summaryCard .stats,.result-area>.card:first-of-type .stats{width:100%}#actionsBox,#topBox{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px}#actionsBox .top-item,#topBox .top-item{min-width:0;margin-bottom:0!important}.result-heading .template-head,.result-area .result-head{align-items:flex-start}.result-heading .table-scroll,.result-area .table-scroll{max-width:100%;overflow-x:auto}@media(max-width:1100px){.input-header{flex-direction:column;gap:12px}.input-actions,.input-head-actions{justify-content:flex-start}.input-layout{grid-template-columns:1fr}.input-info-panel{grid-template-columns:minmax(0,1fr) minmax(0,1.4fr)}#actionsBox,#topBox{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:768px){.header-inner,.page-main,.page{width:calc(100% - 32px)}.input-card{padding:16px!important}.input-info-panel{grid-template-columns:1fr;min-height:0;padding:0}.input-run-panel button{min-height:64px}.result-heading,.result-area{padding:18px 16px 0!important}.result-heading .template-head,.result-area .result-head{flex-direction:column;gap:12px}.result-heading .template-head>div:last-child,.result-area .result-actions{width:100%;display:flex;flex-wrap:wrap}.result-heading .template-head button,.result-area .result-actions button{flex:1 1 auto}#actionsBox,#topBox{grid-template-columns:1fr}.product-nav{max-width:100%;overflow-x:auto}}</style></body></html>
