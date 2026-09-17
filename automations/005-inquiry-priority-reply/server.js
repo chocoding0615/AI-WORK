@@ -1,38 +1,42 @@
 #!/usr/bin/env node
 'use strict';
 
-// Minimal local web surface for #004. Node's built-in `http` only — no
-// framework, no router, no static-file middleware. One page, one endpoint.
+// Minimal local web surface for #005. Node's built-in `http` only — no
+// framework, no router, no static-file middleware.
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { runPipeline, PipelineError } = require('./lib/core');
 
-const PORT = process.env.PORT || 4004;
-const MAX_BODY_BYTES = 2 * 1024 * 1024; // generous for a pasted meeting transcript
+const PORT = process.env.PORT || 4005;
+const MAX_BODY_BYTES = 6 * 1024 * 1024;
 const INDEX_HTML_PATH = path.join(__dirname, 'public', 'index.html');
+const SAMPLE_CSV_PATH = path.join(__dirname, 'fixtures', 'sample-inquiries.csv');
 
 const USER_MESSAGES = {
-  EMPTY_INPUT: '회의 내용을 입력해주세요.',
+  EMPTY_FILE: null,
+  NO_DATA_ROWS: null,
+  NO_USABLE_ROWS: null,
+  MISSING_COLUMNS: null,
+  TOO_MANY_ROWS: null,
+  FILE_TOO_LARGE: 'CSV 파일이 5MB를 초과했습니다.',
   AI_CALL_FAILED: 'AI 분석 호출에 실패했습니다. 잠시 후 다시 시도해주세요.',
   AI_SCHEMA_INVALID: 'AI 응답을 처리하는 중 문제가 발생했습니다. 다시 시도해주세요.',
-  FILE_TOO_LARGE: '입력 내용이 너무 큽니다.',
-  INVALID_REQUEST: '요청 형식이 올바르지 않습니다.',
 };
 
-function userMessage(code) {
-  return USER_MESSAGES[code] || '분석 중 예상치 못한 오류가 발생했습니다.';
+function userMessage(code, fallbackMessage) {
+  const mapped = USER_MESSAGES[code];
+  if (mapped === undefined) return '분석 중 예상치 못한 오류가 발생했습니다.';
+  return mapped === null ? fallbackMessage : mapped;
 }
 
 function sendJson(res, status, body) {
-  const payload = JSON.stringify(body);
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
-  res.end(payload);
+  res.end(JSON.stringify(body));
 }
 
-// Exported so a future shell could mount this same handler under a path
-// prefix — a pure transport-layer detail, no business logic here. Standalone
-// use (`node server.js`) is unaffected: see the require.main guard below.
+// Exported so the AI-WORK shell can mount this handler under /005 — pure
+// transport-layer detail, no business logic here.
 function requestListener(req, res) {
   if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
     fs.readFile(INDEX_HTML_PATH, 'utf8', (err, html) => {
@@ -47,15 +51,20 @@ function requestListener(req, res) {
     return;
   }
 
-  // Sample input so the tool is never a blank screen on first visit.
-  if (req.method === 'GET' && req.url === '/sample.txt') {
-    fs.readFile(path.join(__dirname, 'fixtures', 'sample-meeting.txt'), (err, buf) => {
+  // Serving the sample straight from disk (instead of a copy embedded in the
+  // page) guarantees the downloaded bytes are byte-identical to the fixture
+  // the parser is tested against — BOM and CRLF included.
+  if (req.method === 'GET' && req.url === '/sample.csv') {
+    fs.readFile(SAMPLE_CSV_PATH, (err, buf) => {
       if (err) {
         res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
         res.end('Failed to load sample.');
         return;
       }
-      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.writeHead(200, {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="sample-inquiries.csv"',
+      });
       res.end(buf);
     });
     return;
@@ -66,11 +75,9 @@ function requestListener(req, res) {
     let totalBytes = 0;
     let tooLarge = false;
 
-    // Accumulate raw Buffer chunks and decode ONCE at the end. Decoding each
-    // chunk individually (`body += chunk`) corrupts any multi-byte UTF-8
-    // character (Korean, 3 bytes each) split across two TCP chunks — the
-    // exact bug already found and fixed in #003; applying the same pattern
-    // here from the start instead of reproducing it.
+    // Raw Buffer chunks decoded ONCE at the end — decoding per chunk
+    // corrupts multi-byte UTF-8 characters split across TCP boundaries
+    // (the bug found and fixed in #003).
     req.on('data', (chunk) => {
       totalBytes += chunk.length;
       if (totalBytes > MAX_BODY_BYTES) {
@@ -87,22 +94,21 @@ function requestListener(req, res) {
         return;
       }
       const body = Buffer.concat(chunks).toString('utf8');
-      let parsedBody;
       try {
-        parsedBody = JSON.parse(body);
-      } catch (e) {
-        sendJson(res, 200, { ok: false, code: 'INVALID_REQUEST', message: userMessage('INVALID_REQUEST') });
-        return;
-      }
-      try {
-        const output = runPipeline(parsedBody.text);
-        sendJson(res, 200, { ok: true, result: output.result, plainText: output.plainText });
+        const output = runPipeline(body);
+        sendJson(res, 200, {
+          ok: true,
+          summary: output.summary,
+          items: output.items,
+          top5: output.top5,
+          rowIssues: output.rowIssues,
+          summaryText: output.summaryText,
+          resultCsv: output.resultCsv,
+        });
       } catch (e) {
         const code = e instanceof PipelineError ? e.code : 'UNEXPECTED_ERROR';
-        // Full detail stays server-side only — the client never sees raw
-        // stack traces or internal AI-provider output.
-        console.error(`[#004 server] ${code}: ${e.message}`);
-        sendJson(res, 200, { ok: false, code, message: userMessage(code) });
+        console.error(`[#005 server] ${code}: ${e.message}`);
+        sendJson(res, 200, { ok: false, code, message: userMessage(code, e.message) });
       }
     });
     return;
@@ -116,7 +122,7 @@ const server = http.createServer(requestListener);
 
 if (require.main === module) {
   server.listen(PORT, () => {
-    console.log(`[#004] Server running at http://localhost:${PORT}`);
+    console.log(`[#005] Server running at http://localhost:${PORT}`);
   });
 }
 

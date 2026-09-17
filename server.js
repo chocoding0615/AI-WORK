@@ -17,6 +17,7 @@ const { requestListener: automation001 } = require('./automations/001-customer-f
 const { requestListener: automation002 } = require('./automations/002-sales-anomaly-action/server');
 const { requestListener: automation003 } = require('./automations/003-expense-recurring-cost/server');
 const { requestListener: automation004 } = require('./automations/004-meeting-action/server');
+const { requestListener: automation005 } = require('./automations/005-inquiry-priority-reply/server');
 
 const PORT = process.env.PORT || 4001;
 const SHELL_HTML_PATH = path.join(__dirname, 'shell', 'index.html');
@@ -27,6 +28,7 @@ const ROUTES = [
   { prefix: '/002', handler: automation002 },
   { prefix: '/003', handler: automation003 },
   { prefix: '/004', handler: automation004 },
+  { prefix: '/005', handler: automation005 },
 ];
 
 function serveShell(res) {

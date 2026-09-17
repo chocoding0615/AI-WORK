@@ -60,7 +60,7 @@
     cursor: not-allowed;
   }
   #analyzeBtn {
-    background: #1a1a1a;
+    background: #1e3a5f;
     color: #fff;
     width: 100%;
     margin-top: 8px;
@@ -144,6 +144,7 @@
     display: flex;
     gap: 8px;
     align-items: center;
+    flex-wrap: wrap;
     font-size: 0.85rem;
   }
   .shell-nav .brand { font-weight: 700; margin-right: 8px; }
@@ -153,7 +154,7 @@
     padding: 4px 10px;
     border-radius: 6px;
   }
-  .shell-nav a.current { background: #1a1a1a; color: #fff; }
+  .shell-nav a.current { background: #1e3a5f; color: #fff; }
   .example-box {
     margin-top: 16px;
     padding-top: 16px;
@@ -190,10 +191,12 @@
 <body>
 <nav class="shell-nav">
   <span class="brand">AI-WORK</span>
-  <a href="/001/">#001 Customer Feedback → Action</a>
-  <a class="current" href="/002/">#002 Sales Data → Anomaly & Action</a>
-  <a href="/003/">#003 Expense → Recurring Cost & Action</a>
-  <a href="/004/">#004 Meeting → Decision & Action</a>
+  <a href="/">홈</a>
+  <a href="/001/">#001 고객 피드백</a>
+  <a class="current" href="/002/">#002 매출 이상</a>
+  <a href="/003/">#003 반복 지출</a>
+  <a href="/004/">#004 회의 정리</a>
+  <a href="/005/">#005 문의 우선순위</a>
 </nav>
 <main>
   <h1>Sales Data → Anomaly & Action</h1>

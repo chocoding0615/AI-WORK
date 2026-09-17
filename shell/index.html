@@ -3,58 +3,225 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>AI-WORK</title>
+<title>AI-WORK — 업무 데이터 처리 도구 모음</title>
 <style>
-  :root { color-scheme: light dark; }
+  :root {
+    color-scheme: light;
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --border: #dfe3e8;
+    --border-strong: #c7cdd6;
+    --text: #1a1d23;
+    --muted: #5f6672;
+    --navy: #1e3a5f;
+    --navy-hover: #16293f;
+  }
   * { box-sizing: border-box; }
   body {
     margin: 0;
+    padding: 28px 16px 64px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Pretendard, sans-serif;
-    background: #f7f7f5;
-    color: #1a1a1a;
-    display: flex;
-    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    font-size: 15px;
   }
-  aside {
-    width: 240px;
-    flex: none;
-    background: #fff;
-    border-right: 1px solid #e2e2e0;
-    padding: 20px 12px;
+  main { max-width: 960px; margin: 0 auto; }
+  header.page-head { margin-bottom: 22px; }
+  header.page-head .brand { font-size: 0.82rem; font-weight: 700; color: var(--navy); letter-spacing: 0.04em; }
+  header.page-head h1 { font-size: 1.55rem; margin: 4px 0 6px; }
+  header.page-head p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+  .recent {
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 4px solid var(--navy); border-radius: 8px;
+    padding: 12px 14px; margin-bottom: 18px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   }
-  aside h1 {
-    font-size: 1.1rem;
-    margin: 0 0 16px 8px;
+  .recent .label { font-size: 0.8rem; font-weight: 700; color: var(--muted); }
+  .recent .name { font-weight: 600; }
+  .recent a { margin-left: auto; text-decoration: none; }
+
+  .tool-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .tool {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px 16px 14px;
+    display: flex; flex-direction: column;
   }
-  aside a {
-    display: block;
-    padding: 10px 12px;
-    border-radius: 8px;
-    color: #333;
-    text-decoration: none;
-    font-size: 0.9rem;
-    margin-bottom: 4px;
+  .tool .no { font-size: 0.78rem; font-weight: 700; color: var(--navy); }
+  .tool h2 { font-size: 1.05rem; margin: 3px 0 6px; }
+  .tool .summary { color: var(--muted); font-size: 0.89rem; margin: 0 0 12px; }
+  .io { border-top: 1px solid var(--border); padding-top: 10px; margin-bottom: 12px; }
+  .io-row { display: flex; gap: 8px; font-size: 0.85rem; margin-bottom: 5px; }
+  .io-row:last-child { margin-bottom: 0; }
+  .io-row .k {
+    flex: none; width: 42px; font-weight: 700; color: var(--muted); font-size: 0.78rem;
+    padding-top: 1px;
   }
-  aside a:hover { background: #f0f0ee; }
-  main {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    color: #777;
-    text-align: center;
+  .io-row .v { color: var(--text); }
+  .tool .actions { margin-top: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+  a.btn, button.btn {
+    display: inline-block; text-decoration: none; text-align: center;
+    font-size: 0.88rem; padding: 8px 14px; border-radius: 8px;
+    border: 1px solid transparent; cursor: pointer; font-family: inherit;
+  }
+  a.btn-primary { background: var(--navy); color: #fff; font-weight: 600; }
+  a.btn-primary:hover { background: var(--navy-hover); }
+  a.btn-secondary { background: #f2f4f7; color: var(--text); border-color: var(--border-strong); }
+  a.btn-secondary:hover { background: #e8ebf0; }
+
+  footer.note {
+    margin-top: 22px; font-size: 0.83rem; color: var(--muted);
+    border-top: 1px solid var(--border); padding-top: 12px;
+  }
+  /* must come after .recent{display:flex} or the hidden attribute loses */
+  [hidden] { display: none !important; }
+
+  @media (max-width: 760px) {
+    .tool-grid { grid-template-columns: 1fr; }
+    body { padding: 20px 12px 48px; }
+    header.page-head h1 { font-size: 1.3rem; }
+    .tool .actions a.btn { flex: 1 1 100%; }
+    .recent a { margin-left: 0; width: 100%; }
   }
 </style>
 </head>
 <body>
-<aside>
-  <h1>AI-WORK</h1>
-  <a href="/001/">#001 Customer Feedback → Action</a>
-  <a href="/002/">#002 Sales Data → Anomaly & Action</a>
-  <a href="/003/">#003 Expense → Recurring Cost & Action</a>
-  <a href="/004/">#004 Meeting → Decision & Action</a>
-</aside>
-<main>왼쪽에서 자동화를 선택하세요.</main>
+<main>
+  <header class="page-head">
+    <div class="brand">AI-WORK</div>
+    <h1>업무 데이터를 넣으면 바로 쓸 수 있는 결과를 만들어 줍니다</h1>
+    <p>CSV나 회의록을 올리면 요약이 아니라 <strong>바로 처리할 수 있는 결과</strong>(우선순위, 할 일, 담당자, 답변 초안)를 정리해 줍니다. 도구를 선택해 바로 사용하세요.</p>
+  </header>
+
+  <div class="recent" id="recentBox" hidden>
+    <span class="label">최근 사용</span>
+    <span class="name" id="recentName"></span>
+    <a class="btn btn-primary" id="recentLink" href="/">이어서 열기</a>
+  </div>
+
+  <div class="tool-grid" id="toolGrid"></div>
+
+  <footer class="note">
+    각 도구는 따로 실행할 수도 있습니다 · 결과는 저장되지 않으며 화면에서 복사하거나 파일로 내려받습니다.
+  </footer>
+</main>
+
+<script>
+(function () {
+  var TOOLS = [
+    {
+      id: '001', path: '/001/', name: '고객 피드백 → 개선 액션',
+      summary: '리뷰에 반복되는 불만과 요청을 묶어, 무엇부터 고쳐야 하는지 순서대로 정리합니다.',
+      input: '고객 리뷰 CSV (review 열 필요, 최대 300건)',
+      output: '반복 불만·요청·칭찬 정리, 개선 Action TOP 5, 실제 리뷰 근거',
+      sample: '/001/sample.csv', sampleLabel: '샘플 CSV'
+    },
+    {
+      id: '002', path: '/002/', name: '매출 이상 → 확인할 것',
+      summary: '최근 7일과 그 이전 7일을 비교해 이상하게 변한 상품만 골라냅니다.',
+      input: '일자별 매출 CSV (날짜/상품명/매출액/수량, 최소 14일치)',
+      output: '급증·급감 상품, 변화 금액과 비율, 확인해야 할 항목',
+      sample: '/002/sample.csv', sampleLabel: '샘플 CSV'
+    },
+    {
+      id: '003', path: '/003/', name: '지출 → 반복 결제 정리',
+      summary: '매달 비슷한 날에 빠져나가는 돈을 찾아 연 환산 금액까지 보여줍니다.',
+      input: '카드·지출 내역 CSV (날짜/가맹점명/금액, 최소 3개월치)',
+      output: '반복 결제 후보, 반복 개월 수, 주요 결제일, 월 평균·연 환산 금액',
+      sample: '/003/sample.csv', sampleLabel: '샘플 CSV'
+    },
+    {
+      id: '004', path: '/004/', name: '회의 → 결정사항·할 일',
+      summary: '회의록을 붙여넣으면 누가 무엇을 언제까지 해야 하는지만 뽑아냅니다.',
+      input: '회의록 또는 업무 대화 텍스트 (붙여넣기)',
+      output: '결정사항, 할 일(담당자·기한), 확인이 필요한 사항',
+      sample: '/004/sample.txt', sampleLabel: '샘플 회의록'
+    },
+    {
+      id: '005', path: '/005/', name: '문의 → 우선순위·답변 초안',
+      summary: '쌓인 고객 문의를 급한 순서로 세우고, 문의마다 답변 초안까지 만들어 줍니다.',
+      input: '고객 문의 CSV (접수일/고객명/채널/주문번호/문의내용/현재상태/담당자메모)',
+      output: '우선 처리 TOP 5, 문의 분류·판단 근거, 다음 행동, 답변 초안, 결과 CSV',
+      sample: '/005/sample.csv', sampleLabel: '샘플 CSV'
+    }
+  ];
+
+  var STORE_KEY = 'aiwork.recentTool';
+  var grid = document.getElementById('toolGrid');
+
+  function remember(id) {
+    try { localStorage.setItem(STORE_KEY, id); } catch (e) { /* private mode — skip */ }
+  }
+
+  TOOLS.forEach(function (t) {
+    var card = document.createElement('div');
+    card.className = 'tool';
+
+    var no = document.createElement('div');
+    no.className = 'no';
+    no.textContent = '#' + t.id;
+    card.appendChild(no);
+
+    var h2 = document.createElement('h2');
+    h2.textContent = t.name;
+    card.appendChild(h2);
+
+    var sum = document.createElement('p');
+    sum.className = 'summary';
+    sum.textContent = t.summary;
+    card.appendChild(sum);
+
+    var io = document.createElement('div');
+    io.className = 'io';
+    [['입력', t.input], ['결과', t.output]].forEach(function (pair) {
+      var row = document.createElement('div');
+      row.className = 'io-row';
+      var k = document.createElement('span');
+      k.className = 'k';
+      k.textContent = pair[0];
+      var v = document.createElement('span');
+      v.className = 'v';
+      v.textContent = pair[1];
+      row.appendChild(k);
+      row.appendChild(v);
+      io.appendChild(row);
+    });
+    card.appendChild(io);
+
+    var actions = document.createElement('div');
+    actions.className = 'actions';
+
+    var open = document.createElement('a');
+    open.className = 'btn btn-primary';
+    open.href = t.path;
+    open.textContent = '열기';
+    open.addEventListener('click', function () { remember(t.id); });
+    actions.appendChild(open);
+
+    var sample = document.createElement('a');
+    sample.className = 'btn btn-secondary';
+    sample.href = t.sample;
+    sample.setAttribute('download', '');
+    sample.textContent = t.sampleLabel + ' 받기';
+    actions.appendChild(sample);
+
+    card.appendChild(actions);
+    grid.appendChild(card);
+  });
+
+  // "최근 사용" — purely client-side (localStorage), no account or database.
+  var recentId = null;
+  try { recentId = localStorage.getItem(STORE_KEY); } catch (e) { recentId = null; }
+  var recent = TOOLS.filter(function (t) { return t.id === recentId; })[0];
+  if (recent) {
+    document.getElementById('recentName').textContent = '#' + recent.id + ' ' + recent.name;
+    var link = document.getElementById('recentLink');
+    link.href = recent.path;
+    link.addEventListener('click', function () { remember(recent.id); });
+    document.getElementById('recentBox').hidden = false;
+  }
+})();
+</script>
 </body>
 </html>

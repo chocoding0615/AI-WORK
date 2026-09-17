@@ -60,7 +60,7 @@
     cursor: not-allowed;
   }
   #analyzeBtn {
-    background: #1a1a1a;
+    background: #1e3a5f;
     color: #fff;
     width: 100%;
     margin-top: 8px;
@@ -139,6 +139,15 @@
     color: #2a7a2a;
     margin-left: 4px;
   }
+  .input-actions { display: flex; gap: 8px; margin: 0 0 12px; flex-wrap: wrap; }
+  .btn-sample {
+    background: #f2f4f7;
+    color: #1a1d23;
+    border: 1px solid #c7cdd6;
+    font-size: 0.85rem;
+    padding: 7px 13px;
+  }
+  .btn-sample:hover { background: #e8ebf0; }
   [hidden] { display: none !important; }
   .shell-nav {
     max-width: 720px;
@@ -146,6 +155,7 @@
     display: flex;
     gap: 8px;
     align-items: center;
+    flex-wrap: wrap;
     font-size: 0.85rem;
   }
   .shell-nav .brand { font-weight: 700; margin-right: 8px; }
@@ -155,16 +165,18 @@
     padding: 4px 10px;
     border-radius: 6px;
   }
-  .shell-nav a.current { background: #1a1a1a; color: #fff; }
+  .shell-nav a.current { background: #1e3a5f; color: #fff; }
 </style>
 </head>
 <body>
 <nav class="shell-nav">
   <span class="brand">AI-WORK</span>
-  <a class="current" href="/001/">#001 Customer Feedback → Action</a>
-  <a href="/002/">#002 Sales Data → Anomaly & Action</a>
-  <a href="/003/">#003 Expense → Recurring Cost & Action</a>
-  <a href="/004/">#004 Meeting → Decision & Action</a>
+  <a href="/">홈</a>
+  <a class="current" href="/001/">#001 고객 피드백</a>
+  <a href="/002/">#002 매출 이상</a>
+  <a href="/003/">#003 반복 지출</a>
+  <a href="/004/">#004 회의 정리</a>
+  <a href="/005/">#005 문의 우선순위</a>
 </nav>
 <main>
   <h1>Customer Feedback → Action</h1>
@@ -174,6 +186,13 @@
   <section class="card">
     <input type="file" id="csvFile" accept=".csv,text/csv" />
     <p class="field-hint">필수 컬럼: review · 최대 300개 리뷰</p>
+    <div class="input-actions">
+      <button id="loadSampleBtn" type="button" class="btn-sample">샘플 리뷰 불러오기</button>
+      <a href="sample.csv" download="sample-reviews.csv" style="text-decoration:none">
+        <button type="button" class="btn-sample">샘플 CSV 받기</button>
+      </a>
+    </div>
+    <div id="sampleNote" class="field-hint" hidden></div>
     <button id="analyzeBtn" type="button">분석하기</button>
     <p id="status" hidden></p>
     <div id="errorBox" hidden></div>
@@ -200,7 +219,10 @@
   var copyBtn = document.getElementById('copyBtn');
   var downloadBtn = document.getElementById('downloadBtn');
   var copyFeedback = document.getElementById('copyFeedback');
+  var loadSampleBtn = document.getElementById('loadSampleBtn');
+  var sampleNote = document.getElementById('sampleNote');
 
+  var sampleText = null;
   var isAnalyzing = false;
   var lastMarkdown = null;
 
@@ -306,20 +328,35 @@
     resultCard.hidden = false;
   }
 
+  loadSampleBtn.addEventListener('click', function () {
+    clearError();
+    fetch('sample.csv').then(function (r) { return r.text(); }).then(function (text) {
+      sampleText = text;
+      fileInput.value = '';
+      sampleNote.hidden = false;
+      sampleNote.textContent = '샘플 리뷰를 불러왔습니다. 바로 분석할 수 있습니다.';
+    }).catch(function () { showError('샘플을 불러오지 못했습니다.'); });
+  });
+
+  fileInput.addEventListener('change', function () {
+    if (fileInput.files[0]) { sampleText = null; sampleNote.hidden = true; }
+  });
+
   analyzeBtn.addEventListener('click', function () {
     if (isAnalyzing) return;
     clearError();
     resultCard.hidden = true;
 
     var file = fileInput.files[0];
-    if (!file) {
-      showError('CSV 파일을 선택해주세요.');
+    if (!file && !sampleText) {
+      showError('CSV 파일을 선택하거나 샘플 리뷰를 불러와주세요.');
       return;
     }
 
     setBusy(true);
 
-    file.text().then(function (text) {
+    // A chosen file always wins; the loaded sample is the fallback.
+    (file ? file.text() : Promise.resolve(sampleText)).then(function (text) {
       // Relative (not "/analyze") so this works both standalone (page at "/")
       // and mounted under the AI-WORK shell (page at "/001/").
       return fetch('analyze', {
