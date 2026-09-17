@@ -1,6 +1,27 @@
 'use strict';
 
 const { spawnSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+// On Windows, `claude` on PATH is an npm shim (claude.cmd), not a .exe.
+// spawnSync can't resolve/run a .cmd without a shell, and running it *with*
+// a shell requires concatenating args into a command line that Node does not
+// escape — review text containing quotes, parens, or backticks (all common
+// in real feedback) would corrupt the command. So on Windows we instead
+// locate the real claude.exe the shim wraps (same layout every npm global
+// install uses: <npm dir>/node_modules/@anthropic-ai/claude-code/bin/claude.exe)
+// and spawn that directly, with no shell involved.
+function resolveWindowsClaudeExecutable() {
+  const dirs = (process.env.PATH || '').split(path.delimiter);
+  for (const dir of dirs) {
+    if (fs.existsSync(path.join(dir, 'claude.cmd'))) {
+      const exe = path.join(dir, 'node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe');
+      if (fs.existsSync(exe)) return exe;
+    }
+  }
+  return null;
+}
 
 // Single AI provider / single model path for #001: the already-authenticated
 // local `claude` CLI, invoked non-interactively (`-p`). No API key is stored
@@ -21,7 +42,9 @@ function callClaude({ systemPrompt, userPrompt, model }) {
     '--output-format', 'json',
   ];
 
-  const proc = spawnSync('claude', args, {
+  const command = (process.platform === 'win32' && resolveWindowsClaudeExecutable()) || 'claude';
+
+  const proc = spawnSync(command, args, {
     encoding: 'utf8',
     maxBuffer: 1024 * 1024 * 20,
   });
