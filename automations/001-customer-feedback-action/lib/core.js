@@ -6,7 +6,7 @@
 // now has two entry points instead of one.
 const { parseCsv, validateInput } = require('./csv');
 const { callClaude } = require('./ai');
-const { aggregate, validateClassification } = require('./aggregate');
+const { aggregate, validateClassification, categoryTotals } = require('./aggregate');
 const {
   CLASSIFY_SYSTEM_PROMPT,
   INTERPRET_SYSTEM_PROMPT,
@@ -17,12 +17,15 @@ const {
   dedupThemes,
   verifyEvidenceIntegrity,
   assembleResult,
-  renderMarkdown,
+  buildReviewDetails,
+  renderSummaryText,
+  renderResultCsv,
 } = require('./pipeline');
 
 const DEFAULT_MAX_REVIEWS = 300;
 const DEFAULT_MODEL = 'claude-sonnet-5';
 const BULLET_LIMIT = 5;
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
 class PipelineError extends Error {
   constructor(code, message) {
@@ -32,11 +35,15 @@ class PipelineError extends Error {
 }
 
 function runPipeline(csvText, { maxReviews = DEFAULT_MAX_REVIEWS, model = DEFAULT_MODEL } = {}) {
-  const rows = parseCsv(csvText);
+  if (Buffer.byteLength(csvText || '', 'utf8') > MAX_FILE_BYTES) {
+    throw new PipelineError('FILE_TOO_LARGE', 'CSV 파일이 5MB를 초과했습니다.');
+  }
+
+  const rows = parseCsv(csvText || '');
   const validation = validateInput(rows, { maxReviews });
   if (!validation.ok) throw new PipelineError(validation.code, validation.message);
 
-  const { reviews, blankSkipped } = validation;
+  const { reviews, blankSkipped, rowIssues } = validation;
 
   let classifyResult;
   try {
@@ -54,7 +61,9 @@ function runPipeline(csvText, { maxReviews = DEFAULT_MAX_REVIEWS, model = DEFAUL
     throw new PipelineError('AI_CLASSIFY_SCHEMA_INVALID', e.message);
   }
 
-  const themes = aggregate(reviews, classifyResult.parsed.classifications);
+  const classifications = classifyResult.parsed.classifications;
+  const themes = aggregate(reviews, classifications);
+  const totals = categoryTotals(themes);
 
   const likes = topByCategory(themes, 'praise', BULLET_LIMIT);
   const complaints = topByCategory(themes, 'complaint', BULLET_LIMIT);
@@ -88,7 +97,10 @@ function runPipeline(csvText, { maxReviews = DEFAULT_MAX_REVIEWS, model = DEFAUL
     throw new PipelineError('AI_INTERPRET_SCHEMA_INVALID', e.message);
   }
 
-  const result = assembleResult({ themes, likes, complaints, requests, watchOut, actionThemes, insightMap, actionMap });
+  const result = assembleResult({
+    themes, likes, complaints, requests, watchOut, actionThemes, insightMap, actionMap,
+    totalReviews: reviews.length,
+  });
 
   try {
     verifyEvidenceIntegrity(result, reviews);
@@ -96,11 +108,28 @@ function runPipeline(csvText, { maxReviews = DEFAULT_MAX_REVIEWS, model = DEFAUL
     throw new PipelineError('EVIDENCE_INTEGRITY_FAILURE', e.message);
   }
 
-  const markdown = renderMarkdown(result, { totalReviews: reviews.length, blankSkipped });
+  const reviewDetails = buildReviewDetails({ reviews, classifications, themes, insightMap, actionMap });
+  const priorityReviewCount = reviewDetails.filter((d) => d.isPriority).length;
+
+  const summary = {
+    totalReviews: reviews.length,
+    complaints: totals.complaint,
+    requests: totals.request,
+    praise: totals.praise,
+    priorityReviewCount,
+    excludedCount: blankSkipped,
+  };
+
+  const summaryText = renderSummaryText(result, { totalReviews: reviews.length, blankSkipped });
+  const resultCsv = renderResultCsv(reviewDetails);
 
   return {
+    summary,
     result,
-    markdown,
+    reviewDetails,
+    rowIssues,
+    summaryText,
+    resultCsv,
     meta: {
       totalReviews: reviews.length,
       blankSkipped,

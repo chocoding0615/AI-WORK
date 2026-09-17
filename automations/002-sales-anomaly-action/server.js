@@ -106,10 +106,16 @@ function requestListener(req, res) {
         const output = runPipeline(body);
         sendJson(res, 200, {
           ok: true,
-          markdown: output.markdown,
           periods: output.periods,
           productsAnalyzed: output.productsAnalyzed,
+          totalSales: output.totalSales,
+          surgeCount: output.surgeCount,
+          dropCount: output.dropCount,
           anomalies: output.anomalies,
+          rowIssues: output.rowIssues,
+          analysisBasisNote: output.analysisBasisNote,
+          summaryText: output.summaryText,
+          resultCsv: output.resultCsv,
         });
       } catch (e) {
         const code = e instanceof PipelineError ? e.code : 'UNEXPECTED_ERROR';

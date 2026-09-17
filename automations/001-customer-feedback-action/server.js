@@ -99,7 +99,15 @@ function requestListener(req, res) {
       const body = Buffer.concat(chunks).toString('utf8');
       try {
         const output = runPipeline(body);
-        sendJson(res, 200, { ok: true, markdown: output.markdown, result: output.result, meta: output.meta });
+        sendJson(res, 200, {
+          ok: true,
+          summary: output.summary,
+          result: output.result,
+          reviewDetails: output.reviewDetails,
+          rowIssues: output.rowIssues,
+          summaryText: output.summaryText,
+          resultCsv: output.resultCsv,
+        });
       } catch (e) {
         const code = e instanceof PipelineError ? e.code : 'UNEXPECTED_ERROR';
         // Full detail stays server-side only — the client never sees raw

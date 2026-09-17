@@ -1,6 +1,7 @@
 'use strict';
 
 const ALLOWED_CATEGORIES = new Set(['praise', 'complaint', 'request', 'neutral']);
+const ALLOWED_INTENSITIES = new Set(['낮음', '보통', '높음']);
 
 // CODE OWNS: grouping, counting, sorting, evidence lookup. The AI only
 // supplied a category + theme label per review id; every number and every
@@ -52,6 +53,9 @@ function validateClassification(response, reviews) {
     if (typeof c.theme !== 'string' || c.theme.trim().length === 0) {
       throw new Error(`AI_SCHEMA_INVALID: missing theme for review id ${c.id}`);
     }
+    if (!ALLOWED_INTENSITIES.has(c.intensity)) {
+      throw new Error(`AI_SCHEMA_INVALID: unknown intensity "${c.intensity}" for review id ${c.id}`);
+    }
     seen.add(c.id);
   }
   for (const id of validIds) {
@@ -61,4 +65,12 @@ function validateClassification(response, reviews) {
   }
 }
 
-module.exports = { aggregate, validateClassification, ALLOWED_CATEGORIES };
+// Full totals across EVERY theme (not just the top-5 shown in bullets) —
+// used for the summary stat tiles, which must reflect the whole dataset.
+function categoryTotals(themes) {
+  const totals = { praise: 0, complaint: 0, request: 0, neutral: 0 };
+  for (const t of themes) totals[t.category] += t.mention_count;
+  return totals;
+}
+
+module.exports = { aggregate, validateClassification, categoryTotals, ALLOWED_CATEGORIES, ALLOWED_INTENSITIES };

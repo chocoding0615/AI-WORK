@@ -96,7 +96,13 @@ function requestListener(req, res) {
       }
       try {
         const output = runPipeline(parsedBody.text);
-        sendJson(res, 200, { ok: true, result: output.result, plainText: output.plainText });
+        sendJson(res, 200, {
+          ok: true,
+          summary: output.summary,
+          result: output.result,
+          plainText: output.plainText,
+          resultCsv: output.resultCsv,
+        });
       } catch (e) {
         const code = e instanceof PipelineError ? e.code : 'UNEXPECTED_ERROR';
         // Full detail stays server-side only — the client never sees raw

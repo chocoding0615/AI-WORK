@@ -35,12 +35,17 @@ function main() {
     console.error(`[#003] AI interpretation call ok (cost: $${output.meta.interpretCostUsd}).`);
   }
 
-  console.log(output.markdown);
+  console.log(output.summaryText);
 
   const outIdx = process.argv.indexOf('--out');
   if (outIdx !== -1 && process.argv[outIdx + 1]) {
-    fs.writeFileSync(process.argv[outIdx + 1], output.markdown, 'utf8');
+    fs.writeFileSync(process.argv[outIdx + 1], output.summaryText, 'utf8');
     console.error(`[#003] Result written to ${process.argv[outIdx + 1]}`);
+  }
+  const csvOutIdx = process.argv.indexOf('--csv-out');
+  if (csvOutIdx !== -1 && process.argv[csvOutIdx + 1]) {
+    fs.writeFileSync(process.argv[csvOutIdx + 1], output.resultCsv, 'utf8');
+    console.error(`[#003] Result CSV written to ${process.argv[csvOutIdx + 1]}`);
   }
 }
 

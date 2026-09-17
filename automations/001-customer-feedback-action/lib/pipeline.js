@@ -1,5 +1,10 @@
 'use strict';
 
+const { toCsv } = require('./csv');
+
+const DEPARTMENTS = ['제품', '운영', '고객지원', '배송', '기타'];
+const CATEGORY_LABEL_KO = { praise: '칭찬', complaint: '불만', request: '요청', neutral: '중립' };
+
 const CLASSIFY_SYSTEM_PROMPT =
   'You are a structured data classifier. You output ONLY a single JSON object ' +
   'matching the schema the user describes. No markdown, no code fences, no commentary, ' +
@@ -10,7 +15,8 @@ const INTERPRET_SYSTEM_PROMPT =
   'the schema the user describes. No markdown, no code fences, no commentary. You must ' +
   'only reference the theme_id values given to you — never invent new ones, never invent ' +
   'review content, never state a mention count (counts are supplied by the caller and must ' +
-  'not be repeated or altered).';
+  'not be repeated or altered). Never invent a real person\'s name as an owner — only choose ' +
+  'a responsible AREA from the fixed list given.';
 
 function buildClassifyPrompt(reviews) {
   const payload = reviews.map((r) => ({ id: r.id, review: r.review }));
@@ -21,11 +27,14 @@ function buildClassifyPrompt(reviews) {
     '- theme: a short 2-5 word label for the specific topic, ALWAYS written in Korean ' +
     'regardless of what language the review itself is in (e.g. "배송 속도", "포장 품질", ' +
     '"앱 충돌"). Use the SAME Korean theme label (verbatim) for reviews that describe the ' +
-    'same underlying topic, so they can be grouped later.\n\n' +
+    'same underlying topic, so they can be grouped later.\n' +
+    '- intensity: how strongly the review expresses this, exactly one of "낮음", "보통", "높음" ' +
+    '(감정/불만의 강도를 문의내용에 드러난 것만 근거로 판단).\n\n' +
     'Return strictly this JSON shape and nothing else:\n' +
-    '{"classifications":[{"id": <number>, "category": "<praise|complaint|request|neutral>", "theme": "<short label>"}]}\n\n' +
+    '{"classifications":[{"id": <number>, "category": "<praise|complaint|request|neutral>", ' +
+    '"theme": "<short label>", "intensity": "<낮음|보통|높음>"}]}\n\n' +
     'Every id below must appear exactly once in your response. Do not include review text ' +
-    'in your response, only id/category/theme.\n\n' +
+    'in your response, only id/category/theme/intensity.\n\n' +
     `Reviews:\n${JSON.stringify(payload)}`
   );
 }
@@ -55,10 +64,12 @@ function buildInterpretPrompt({ insightThemes, actionThemes }) {
     'summarizing what customers are saying about it, grounded only in the evidence text given.\n\n' +
     'TASK 2 — for every theme in ACTION_THEMES, write in Korean:\n' +
     '- why_it_matters: one Korean sentence on why this matters to the business\n' +
-    '- recommended_action: one concrete, specific Korean sentence describing the action to take\n\n' +
+    '- recommended_action: one concrete, specific Korean sentence describing the action to take\n' +
+    `- department: which team area should own this, exactly one of ${JSON.stringify(DEPARTMENTS)} ` +
+    '(pick the closest fit; use "기타" only if truly none fit — never invent a person\'s name)\n\n' +
     'Return strictly this JSON shape and nothing else:\n' +
     '{"insights":[{"theme_id":"<id>","sentence":"<...>"}],' +
-    '"actions":[{"theme_id":"<id>","why_it_matters":"<...>","recommended_action":"<...>"}]}\n\n' +
+    '"actions":[{"theme_id":"<id>","why_it_matters":"<...>","recommended_action":"<...>","department":"<...>"}]}\n\n' +
     'You must cover every theme_id given below exactly once in the relevant array, and no others.\n\n' +
     `INSIGHT_THEMES:\n${JSON.stringify(forInsights)}\n\n` +
     `ACTION_THEMES:\n${JSON.stringify(forActions)}`
@@ -87,11 +98,16 @@ function validateInterpretation(response, expectedInsightIds, expectedActionIds)
     if (
       typeof a.theme_id !== 'string' ||
       typeof a.why_it_matters !== 'string' || a.why_it_matters.trim() === '' ||
-      typeof a.recommended_action !== 'string' || a.recommended_action.trim() === ''
+      typeof a.recommended_action !== 'string' || a.recommended_action.trim() === '' ||
+      !DEPARTMENTS.includes(a.department)
     ) {
       throw new Error(`AI_SCHEMA_INVALID: malformed action entry ${JSON.stringify(a)}`);
     }
-    actionMap.set(a.theme_id, { why_it_matters: a.why_it_matters.trim(), recommended_action: a.recommended_action.trim() });
+    actionMap.set(a.theme_id, {
+      why_it_matters: a.why_it_matters.trim(),
+      recommended_action: a.recommended_action.trim(),
+      department: a.department,
+    });
   }
   for (const id of expectedActionIds) {
     if (!actionMap.has(id)) {
@@ -134,7 +150,7 @@ function verifyEvidenceIntegrity(result, reviews) {
   }
 }
 
-function assembleResult({ themes, likes, complaints, requests, watchOut, actionThemes, insightMap, actionMap }) {
+function assembleResult({ themes, likes, complaints, requests, watchOut, actionThemes, insightMap, actionMap, totalReviews }) {
   const toBullet = (t) => ({
     theme: t.theme,
     mention_count: t.mention_count,
@@ -146,11 +162,15 @@ function assembleResult({ themes, likes, complaints, requests, watchOut, actionT
     complaints: complaints.map(toBullet),
     requests: requests.map(toBullet),
     watch_out: watchOut.map(toBullet),
-    actions: actionThemes.map((t) => {
+    actions: actionThemes.map((t, idx) => {
       const a = actionMap.get(t.theme_id);
       return {
+        rank: idx + 1,
+        theme_id: t.theme_id,
         problem: t.theme,
         mention_count: t.mention_count,
+        ratio_percent: Math.round((t.mention_count / totalReviews) * 1000) / 10,
+        department: a.department,
         why_it_matters: a.why_it_matters,
         evidence: t.evidence,
         recommended_action: a.recommended_action,
@@ -159,51 +179,113 @@ function assembleResult({ themes, likes, complaints, requests, watchOut, actionT
   };
 }
 
-function renderMarkdown(result, { totalReviews, blankSkipped }) {
+// Per-review detail table — CODE builds this directly from the validated
+// classifications (no extra AI call): every review, its type/theme/intensity,
+// and a recommended handling that reuses already-validated AI text where one
+// exists for its theme, or a fixed deterministic fallback otherwise. Nothing
+// here is invented per-review by the AI.
+function buildReviewDetails({ reviews, classifications, themes, insightMap, actionMap }) {
+  const byReviewId = new Map(reviews.map((r) => [r.id, r]));
+  const themeIdByKey = new Map(themes.map((t) => [`${t.category}::${t.theme.trim().toLowerCase()}`, t]));
+  const actionRankByThemeId = new Map();
+  let rank = 0;
+  for (const t of themes) {
+    if (actionMap.has(t.theme_id)) actionRankByThemeId.set(t.theme_id, ++rank);
+  }
+
+  return classifications.map((c) => {
+    const review = byReviewId.get(c.id);
+    const key = `${c.category}::${c.theme.trim().toLowerCase()}`;
+    const themeObj = themeIdByKey.get(key);
+    const themeId = themeObj ? themeObj.theme_id : null;
+
+    let handling;
+    if (themeId && actionMap.has(themeId)) {
+      handling = `개선 Action ${actionRankByThemeId.get(themeId)}번 참고: ${actionMap.get(themeId).recommended_action}`;
+    } else if (themeId && insightMap.has(themeId)) {
+      handling = `참고 관찰: ${insightMap.get(themeId)}`;
+    } else if (c.category === 'praise') {
+      handling = '특이 조치 불필요 — 강점으로 유지';
+    } else if (c.category === 'complaint' || c.category === 'request') {
+      handling = '언급 빈도가 낮아 우선순위 밖 — 반복되면 재검토';
+    } else {
+      handling = '특이 조치 불필요';
+    }
+
+    return {
+      id: c.id,
+      rowNumber: review.rowNumber,
+      category: c.category,
+      categoryLabel: CATEGORY_LABEL_KO[c.category] || c.category,
+      theme: c.theme,
+      intensity: c.intensity,
+      review: review.review,
+      isPriority: Boolean(themeId && actionMap.has(themeId)),
+      handling,
+    };
+  });
+}
+
+// Plain text — safe to paste into Slack/KakaoTalk/email as-is (no markdown
+// syntax that would render as garbage in those tools).
+function renderSummaryText(result, { totalReviews, blankSkipped }) {
   const lines = [];
-  lines.push('# 고객 리뷰 → 개선 Action Report');
-  lines.push('');
+  lines.push('[고객 피드백 처리 요약]');
   lines.push(`분석한 리뷰 수: ${totalReviews}건 (빈 리뷰 ${blankSkipped}건 제외)`);
   lines.push('');
 
-  lines.push('## 1. 고객이 좋아하는 이유');
-  if (result.likes.length === 0) lines.push('- (칭찬 관련 항목 없음)');
-  for (const l of result.likes) lines.push(`- **${l.theme}** (${l.mention_count}건 언급) — ${l.sentence}`);
+  lines.push('[고객이 좋아하는 이유]');
+  if (result.likes.length === 0) lines.push('- 없음');
+  for (const l of result.likes) lines.push(`- ${l.theme} (${l.mention_count}건) — ${l.sentence}`);
   lines.push('');
 
-  lines.push('## 2. 반복되는 불만');
-  if (result.complaints.length === 0) lines.push('- (불만 관련 항목 없음)');
-  for (const l of result.complaints) lines.push(`- **${l.theme}** (${l.mention_count}건 언급) — ${l.sentence}`);
+  lines.push('[반복되는 불만]');
+  if (result.complaints.length === 0) lines.push('- 없음');
+  for (const l of result.complaints) lines.push(`- ${l.theme} (${l.mention_count}건) — ${l.sentence}`);
   lines.push('');
 
-  lines.push('## 3. 고객이 원하는 것');
-  if (result.requests.length === 0) lines.push('- (요청 관련 항목 없음)');
-  for (const l of result.requests) lines.push(`- **${l.theme}** (${l.mention_count}건 언급) — ${l.sentence}`);
+  lines.push('[고객이 원하는 것]');
+  if (result.requests.length === 0) lines.push('- 없음');
+  for (const l of result.requests) lines.push(`- ${l.theme} (${l.mention_count}건) — ${l.sentence}`);
   lines.push('');
 
-  lines.push('## 4. 주의해야 할 문제');
-  if (result.watch_out.length === 0) lines.push('- (없음 — 상위 항목 외에 반복되는 저빈도 이슈 없음)');
-  for (const l of result.watch_out) lines.push(`- **${l.theme}** (${l.mention_count}건 언급) — ${l.sentence}`);
+  lines.push('[주의해야 할 문제]');
+  if (result.watch_out.length === 0) lines.push('- 없음');
+  for (const l of result.watch_out) lines.push(`- ${l.theme} (${l.mention_count}건) — ${l.sentence}`);
   lines.push('');
 
-  lines.push('## 5. 개선 Action TOP 5');
-  if (result.actions.length === 0) lines.push('- (불만/요청 항목이 없어 제안할 Action 없음)');
-  result.actions.forEach((a, idx) => {
-    lines.push(`### ${idx + 1}. ${a.problem}`);
-    lines.push(`- 언급 수: ${a.mention_count}건`);
-    lines.push(`- 왜 중요한가: ${a.why_it_matters}`);
-    lines.push(`- 실제 리뷰 근거:`);
-    for (const e of a.evidence) {
-      lines.push(`  - [review_id ${e.review_id}] "${e.text}"`);
-    }
-    lines.push(`- 추천 개선안: ${a.recommended_action}`);
-    lines.push('');
+  lines.push('[개선 Action TOP 5]');
+  if (result.actions.length === 0) lines.push('- 없음');
+  result.actions.forEach((a) => {
+    lines.push(`${a.rank}. [${a.department}] ${a.problem} (${a.mention_count}건, 전체의 ${a.ratio_percent}%)`);
+    lines.push(`   왜 중요한가: ${a.why_it_matters}`);
+    lines.push(`   추천 개선안: ${a.recommended_action}`);
   });
 
   return lines.join('\n');
 }
 
+const RESULT_CSV_HEADER = [
+  '원본행번호', '리뷰ID', '유형', '주제', '감정강도', '원문리뷰', '우선순위대상', '추천처리방법',
+];
+
+function renderResultCsv(reviewDetails) {
+  const rows = reviewDetails.map((d) => [
+    d.rowNumber,
+    d.id,
+    d.categoryLabel,
+    d.theme,
+    d.intensity,
+    d.review,
+    d.isPriority ? 'Y' : '',
+    d.handling,
+  ]);
+  return toCsv(RESULT_CSV_HEADER, rows);
+}
+
 module.exports = {
+  DEPARTMENTS,
+  CATEGORY_LABEL_KO,
   CLASSIFY_SYSTEM_PROMPT,
   INTERPRET_SYSTEM_PROMPT,
   buildClassifyPrompt,
@@ -213,5 +295,7 @@ module.exports = {
   dedupThemes,
   verifyEvidenceIntegrity,
   assembleResult,
-  renderMarkdown,
+  buildReviewDetails,
+  renderSummaryText,
+  renderResultCsv,
 };

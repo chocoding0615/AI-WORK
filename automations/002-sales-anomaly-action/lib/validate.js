@@ -28,39 +28,52 @@ function validateAndNormalize(rows, { maxRows = MAX_ROWS } = {}) {
   }
 
   const records = [];
+  const rowIssues = [];
   for (let i = 0; i < dataRows.length; i++) {
     const rowNumber = i + 2; // +1 for 0-index, +1 because row 1 is the header
     const r = dataRows[i];
 
     // A fully blank row (all cells empty) is a harmless formatting artifact
-    // (e.g. a trailing blank line), not a data row — skip it, don't fail on it.
+    // (e.g. a trailing blank line), not a data row — skip it silently.
     if (r.every((c) => String(c == null ? '' : c).trim() === '')) continue;
 
-    const product = String(r[columns.product] == null ? '' : r[columns.product]).trim();
-    if (product === '') {
-      throw new SchemaError('INVALID_PRODUCT', `${rowNumber}행의 \`${headerLabels.product}\` 값이 비어 있습니다.`);
+    // Any other per-row problem (empty product, bad date, non-numeric or
+    // negative amount) is reported with its row number and the row is
+    // skipped — it must not stop the rest of a large, mostly-valid file
+    // from being analyzed.
+    try {
+      const product = String(r[columns.product] == null ? '' : r[columns.product]).trim();
+      if (product === '') {
+        throw new SchemaError('INVALID_PRODUCT', `${rowNumber}행의 \`${headerLabels.product}\` 값이 비어 있습니다.`);
+      }
+
+      const date = parseDate(r[columns.date], rowNumber);
+
+      const sales = parseNumber(r[columns.sales], rowNumber, headerLabels.sales);
+      if (sales < 0) {
+        throw new SchemaError('NEGATIVE_SALES', `${rowNumber}행의 \`${headerLabels.sales}\` 값 "${r[columns.sales]}"이 음수입니다.`);
+      }
+
+      const quantity = parseNumber(r[columns.quantity], rowNumber, headerLabels.quantity);
+      if (quantity < 0) {
+        throw new SchemaError('NEGATIVE_QUANTITY', `${rowNumber}행의 \`${headerLabels.quantity}\` 값 "${r[columns.quantity]}"이 음수입니다.`);
+      }
+
+      records.push({ date, product, sales, quantity });
+    } catch (e) {
+      if (e instanceof SchemaError) {
+        rowIssues.push(`${e.message} — 건너뜀`);
+        continue;
+      }
+      throw e;
     }
-
-    const date = parseDate(r[columns.date], rowNumber);
-
-    const sales = parseNumber(r[columns.sales], rowNumber, headerLabels.sales);
-    if (sales < 0) {
-      throw new SchemaError('NEGATIVE_SALES', `${rowNumber}행의 \`${headerLabels.sales}\` 값 "${r[columns.sales]}"이 음수입니다.`);
-    }
-
-    const quantity = parseNumber(r[columns.quantity], rowNumber, headerLabels.quantity);
-    if (quantity < 0) {
-      throw new SchemaError('NEGATIVE_QUANTITY', `${rowNumber}행의 \`${headerLabels.quantity}\` 값 "${r[columns.quantity]}"이 음수입니다.`);
-    }
-
-    records.push({ date, product, sales, quantity });
   }
 
   if (records.length === 0) {
     throw new SchemaError('EMPTY_FILE', '분석할 수 있는 데이터 행이 없습니다.');
   }
 
-  return { records, headerLabels };
+  return { records, headerLabels, rowIssues };
 }
 
 module.exports = { validateAndNormalize, MAX_ROWS };

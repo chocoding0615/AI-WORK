@@ -6,9 +6,24 @@
 const { parseCsv } = require('./csv');
 const { SchemaError } = require('./schema');
 const { validateAndNormalize } = require('./validate');
-const { aggregateDuplicates, computePeriods, aggregateByProduct, detectAnomalies } = require('./analysis');
+const {
+  aggregateDuplicates,
+  computePeriods,
+  aggregateByProduct,
+  detectAnomalies,
+  buildDetectionBasis,
+  buildDailyTrend,
+} = require('./analysis');
 const { callClaude } = require('./ai');
-const { INTERPRET_SYSTEM_PROMPT, buildInterpretPrompt, validateInterpretation, assembleResult, renderMarkdown } = require('./pipeline');
+const {
+  ANALYSIS_BASIS_NOTE,
+  INTERPRET_SYSTEM_PROMPT,
+  buildInterpretPrompt,
+  validateInterpretation,
+  assembleResult,
+  renderSummaryText,
+  renderResultCsv,
+} = require('./pipeline');
 
 const DEFAULT_MODEL = 'claude-sonnet-5';
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -27,9 +42,9 @@ function runPipeline(csvText, { model = DEFAULT_MODEL } = {}) {
 
   const rows = parseCsv(csvText);
 
-  let records;
+  let records, rowIssues;
   try {
-    ({ records } = validateAndNormalize(rows));
+    ({ records, rowIssues } = validateAndNormalize(rows));
   } catch (e) {
     if (e instanceof SchemaError) throw new PipelineError(e.code, e.message);
     throw e;
@@ -47,20 +62,36 @@ function runPipeline(csvText, { model = DEFAULT_MODEL } = {}) {
 
   const byProduct = aggregateByProduct(grouped, periods);
   const productsAnalyzed = byProduct.size;
-  const anomalies = detectAnomalies(byProduct);
+  const rawAnomalies = detectAnomalies(byProduct);
+  const totalSales = records.reduce((sum, r) => sum + r.sales, 0);
+
+  // Attach CODE-owned explanation + daily trend before anything touches AI.
+  const anomaliesWithBasis = rawAnomalies.map((a) => ({
+    ...a,
+    detectionBasis: buildDetectionBasis(a),
+    dailyTrend: buildDailyTrend(grouped, a.product, periods),
+  }));
 
   // Zero anomalies is a valid result — skip the AI call entirely (nothing to
   // interpret, and the spec forbids inventing findings when none exist).
-  if (anomalies.length === 0) {
-    const markdown = renderMarkdown({ periods, productsAnalyzed, anomalies: [] });
-    return { periods, productsAnalyzed, anomalies: [], markdown, meta: { interpretCostUsd: null } };
+  if (anomaliesWithBasis.length === 0) {
+    const base = {
+      periods, productsAnalyzed, totalSales, anomalies: [], rowIssues,
+      surgeCount: 0, dropCount: 0, analysisBasisNote: ANALYSIS_BASIS_NOTE,
+    };
+    return {
+      ...base,
+      summaryText: renderSummaryText(base),
+      resultCsv: renderResultCsv([]),
+      meta: { interpretCostUsd: null },
+    };
   }
 
   let interpretResult;
   try {
     interpretResult = callClaude({
       systemPrompt: INTERPRET_SYSTEM_PROMPT,
-      userPrompt: buildInterpretPrompt(anomalies),
+      userPrompt: buildInterpretPrompt(anomaliesWithBasis),
       model,
     });
   } catch (e) {
@@ -69,19 +100,23 @@ function runPipeline(csvText, { model = DEFAULT_MODEL } = {}) {
 
   let aiMap;
   try {
-    aiMap = validateInterpretation(interpretResult.parsed, anomalies.map((_, idx) => `a${idx}`));
+    aiMap = validateInterpretation(interpretResult.parsed, anomaliesWithBasis.map((_, idx) => `a${idx}`));
   } catch (e) {
     throw new PipelineError('AI_INTERPRET_SCHEMA_INVALID', e.message);
   }
 
-  const finalAnomalies = assembleResult(anomalies, aiMap);
-  const markdown = renderMarkdown({ periods, productsAnalyzed, anomalies: finalAnomalies });
+  const finalAnomalies = assembleResult(anomaliesWithBasis, aiMap);
+  const surgeCount = finalAnomalies.filter((a) => a.type === 'SURGE' || a.type === 'NEW_SURGE').length;
+  const dropCount = finalAnomalies.filter((a) => a.type === 'DROP' || a.type === 'DROP_TO_ZERO').length;
+  const base = {
+    periods, productsAnalyzed, totalSales, anomalies: finalAnomalies, rowIssues,
+    surgeCount, dropCount, analysisBasisNote: ANALYSIS_BASIS_NOTE,
+  };
 
   return {
-    periods,
-    productsAnalyzed,
-    anomalies: finalAnomalies,
-    markdown,
+    ...base,
+    summaryText: renderSummaryText(base),
+    resultCsv: renderResultCsv(finalAnomalies),
     meta: { interpretCostUsd: interpretResult.meta.cost_usd },
   };
 }

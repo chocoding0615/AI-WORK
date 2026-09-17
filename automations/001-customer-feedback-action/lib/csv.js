@@ -3,7 +3,11 @@
 // Minimal RFC4180-ish CSV parser: handles quoted fields, escaped quotes ("")
 // and embedded commas/newlines inside quotes. No external dependency —
 // this is the entire parsing surface #001 needs.
+// Strips a leading UTF-8 BOM (Excel-saved CSVs and our own sample download
+// both carry one) — left in place it would corrupt the first header name.
 function parseCsv(text) {
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+
   const rows = [];
   let row = [];
   let field = '';
@@ -96,10 +100,19 @@ function validateInput(rows, { maxReviews = 300 } = {}) {
 
   const dataRows = rows.slice(1);
   const usable = [];
-  for (const r of dataRows) {
+  const rowIssues = [];
+  for (let i = 0; i < dataRows.length; i++) {
+    const rowNumber = i + 2; // row 1 is the header
+    const r = dataRows[i];
     const review = (r[reviewIdx] || '').trim();
-    if (review.length === 0) continue;
+    if (review.length === 0) {
+      if (!r.every((c) => String(c == null ? '' : c).trim() === '')) {
+        rowIssues.push(`${rowNumber}행: review 값이 비어 있어 건너뜀`);
+      }
+      continue;
+    }
     usable.push({
+      rowNumber,
       review,
       rating: ratingIdx !== -1 ? (r[ratingIdx] || '').trim() || null : null,
       product: productIdx !== -1 ? (r[productIdx] || '').trim() || null : null,
@@ -129,7 +142,22 @@ function validateInput(rows, { maxReviews = 300 } = {}) {
     ok: true,
     reviews,
     blankSkipped: dataRows.length - usable.length,
+    rowIssues,
   };
 }
 
-module.exports = { parseCsv, validateInput };
+// Quote a value only when it needs it, doubling embedded quotes.
+function escapeCsvValue(value) {
+  const s = String(value == null ? '' : value);
+  if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+// Result CSV for download: UTF-8 BOM + CRLF so Excel on Windows opens the
+// Korean text correctly (same convention as the sample file).
+function toCsv(headerRow, dataRows) {
+  const lines = [headerRow, ...dataRows].map((r) => r.map(escapeCsvValue).join(','));
+  return '﻿' + lines.join('\r\n') + '\r\n';
+}
+
+module.exports = { parseCsv, validateInput, escapeCsvValue, toCsv };

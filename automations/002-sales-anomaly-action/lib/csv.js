@@ -4,7 +4,11 @@
 // and embedded commas/newlines inside quotes. No external dependency.
 // (Same parser shape as #001's — copied locally, not shared, per the
 // "independent automation" rule: #002 owns its own CSV parsing.)
+// Strips a leading UTF-8 BOM (Excel-saved CSVs and our own sample download
+// both carry one) — left in place it would corrupt the first header name.
 function parseCsv(text) {
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+
   const rows = [];
   let row = [];
   let field = '';
@@ -67,4 +71,18 @@ function parseCsv(text) {
   return rows.filter((r) => !(r.length === 1 && r[0] === ''));
 }
 
-module.exports = { parseCsv };
+// Quote a value only when it needs it, doubling embedded quotes.
+function escapeCsvValue(value) {
+  const s = String(value == null ? '' : value);
+  if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+// Result CSV for download: UTF-8 BOM + CRLF so Excel on Windows opens the
+// Korean text correctly (same convention as the sample file).
+function toCsv(headerRow, dataRows) {
+  const lines = [headerRow, ...dataRows].map((r) => r.map(escapeCsvValue).join(','));
+  return '﻿' + lines.join('\r\n') + '\r\n';
+}
+
+module.exports = { parseCsv, escapeCsvValue, toCsv };

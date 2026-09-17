@@ -34,12 +34,17 @@ function main() {
   console.error(`[#001] Interpretation call ok (cost: $${output.meta.interpretCostUsd ?? 'n/a'}).`);
   console.error('[#001] Evidence integrity verified against input CSV.');
 
-  console.log(output.markdown);
+  console.log(output.summaryText);
 
   const outIdx = process.argv.indexOf('--out');
   if (outIdx !== -1 && process.argv[outIdx + 1]) {
-    fs.writeFileSync(process.argv[outIdx + 1], output.markdown, 'utf8');
+    fs.writeFileSync(process.argv[outIdx + 1], output.summaryText, 'utf8');
     console.error(`[#001] Result written to ${process.argv[outIdx + 1]}`);
+  }
+  const csvOutIdx = process.argv.indexOf('--csv-out');
+  if (csvOutIdx !== -1 && process.argv[csvOutIdx + 1]) {
+    fs.writeFileSync(process.argv[csvOutIdx + 1], output.resultCsv, 'utf8');
+    console.error(`[#001] Result CSV written to ${process.argv[csvOutIdx + 1]}`);
   }
 }
 

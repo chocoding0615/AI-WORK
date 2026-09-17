@@ -27,27 +27,39 @@ function validateAndNormalize(rows, { maxRows = MAX_ROWS } = {}) {
   }
 
   const records = [];
+  const rowIssues = [];
   for (let i = 0; i < dataRows.length; i++) {
     const rowNumber = i + 2; // +1 for 0-index, +1 because row 1 is the header
     const r = dataRows[i];
 
     // A fully blank row (all cells empty) is a harmless formatting artifact,
-    // not a data row — skip it, don't fail on it.
+    // not a data row — skip it silently.
     if (r.every((c) => String(c == null ? '' : c).trim() === '')) continue;
 
-    const merchant = String(r[columns.merchant] == null ? '' : r[columns.merchant]).trim();
-    if (merchant === '') {
-      throw new SchemaError('INVALID_MERCHANT', `${rowNumber}행의 \`${headerLabels.merchant}\` 값이 비어 있습니다.`);
+    // Any other per-row problem is reported with its row number and the row
+    // is skipped — it must not stop the rest of a large, mostly-valid file
+    // from being analyzed.
+    try {
+      const merchant = String(r[columns.merchant] == null ? '' : r[columns.merchant]).trim();
+      if (merchant === '') {
+        throw new SchemaError('INVALID_MERCHANT', `${rowNumber}행의 \`${headerLabels.merchant}\` 값이 비어 있습니다.`);
+      }
+
+      const date = parseDate(r[columns.date], rowNumber);
+
+      const amount = parseNumber(r[columns.amount], rowNumber, headerLabels.amount);
+      if (amount < 0) {
+        throw new SchemaError('NEGATIVE_AMOUNT', `${rowNumber}행의 \`${headerLabels.amount}\` 값 "${r[columns.amount]}"이 음수입니다.`);
+      }
+
+      records.push({ date, merchant, amount });
+    } catch (e) {
+      if (e instanceof SchemaError) {
+        rowIssues.push(`${e.message} — 건너뜀`);
+        continue;
+      }
+      throw e;
     }
-
-    const date = parseDate(r[columns.date], rowNumber);
-
-    const amount = parseNumber(r[columns.amount], rowNumber, headerLabels.amount);
-    if (amount < 0) {
-      throw new SchemaError('NEGATIVE_AMOUNT', `${rowNumber}행의 \`${headerLabels.amount}\` 값 "${r[columns.amount]}"이 음수입니다.`);
-    }
-
-    records.push({ date, merchant, amount });
   }
 
   if (records.length === 0) {
@@ -62,7 +74,7 @@ function validateAndNormalize(rows, { maxRows = MAX_ROWS } = {}) {
     );
   }
 
-  return { records, headerLabels };
+  return { records, headerLabels, rowIssues };
 }
 
 module.exports = { validateAndNormalize, MAX_ROWS, MIN_DISTINCT_MONTHS };

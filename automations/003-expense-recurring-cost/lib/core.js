@@ -6,9 +6,16 @@
 const { parseCsv } = require('./csv');
 const { SchemaError } = require('./schema');
 const { validateAndNormalize } = require('./validate');
-const { groupByMerchantMonth, detectRecurring, computeSummary } = require('./analysis');
+const { groupByMerchantMonth, detectRecurring, computeSummary, findDuplicateMerchantClusters } = require('./analysis');
 const { callClaude } = require('./ai');
-const { INTERPRET_SYSTEM_PROMPT, buildInterpretPrompt, validateInterpretation, assembleResult, renderMarkdown } = require('./pipeline');
+const {
+  INTERPRET_SYSTEM_PROMPT,
+  buildInterpretPrompt,
+  validateInterpretation,
+  assembleResult,
+  renderSummaryText,
+  renderResultCsv,
+} = require('./pipeline');
 
 const DEFAULT_MODEL = 'claude-sonnet-5';
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -27,9 +34,9 @@ function runPipeline(csvText, { model = DEFAULT_MODEL } = {}) {
 
   const rows = parseCsv(csvText);
 
-  let records;
+  let records, rowIssues;
   try {
-    ({ records } = validateAndNormalize(rows));
+    ({ records, rowIssues } = validateAndNormalize(rows));
   } catch (e) {
     if (e instanceof SchemaError) throw new PipelineError(e.code, e.message);
     throw e;
@@ -38,11 +45,17 @@ function runPipeline(csvText, { model = DEFAULT_MODEL } = {}) {
   const byMerchant = groupByMerchantMonth(records);
   const candidates = detectRecurring(byMerchant);
   const summary = computeSummary(records, candidates);
+  const duplicateClusters = findDuplicateMerchantClusters(candidates);
 
   // Zero recurring candidates is a valid result — skip the AI call entirely.
   if (candidates.length === 0) {
-    const markdown = renderMarkdown({ summary, candidates: [] });
-    return { summary, candidates: [], markdown, meta: { interpretCostUsd: null } };
+    const base = { summary, candidates: [], duplicateClusters, rowIssues };
+    return {
+      ...base,
+      summaryText: renderSummaryText(base),
+      resultCsv: renderResultCsv([]),
+      meta: { interpretCostUsd: null },
+    };
   }
 
   let interpretResult;
@@ -64,12 +77,12 @@ function runPipeline(csvText, { model = DEFAULT_MODEL } = {}) {
   }
 
   const finalCandidates = assembleResult(candidates, aiMap);
-  const markdown = renderMarkdown({ summary, candidates: finalCandidates });
+  const base = { summary, candidates: finalCandidates, duplicateClusters, rowIssues };
 
   return {
-    summary,
-    candidates: finalCandidates,
-    markdown,
+    ...base,
+    summaryText: renderSummaryText(base),
+    resultCsv: renderResultCsv(finalCandidates),
     meta: { interpretCostUsd: interpretResult.meta.cost_usd },
   };
 }

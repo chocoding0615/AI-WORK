@@ -35,6 +35,12 @@ function main() {
   }
 
   console.log(output.plainText);
+
+  const csvOutIdx = process.argv.indexOf('--csv-out');
+  if (csvOutIdx !== -1 && process.argv[csvOutIdx + 1]) {
+    fs.writeFileSync(process.argv[csvOutIdx + 1], output.resultCsv, 'utf8');
+    console.error(`[#004] Result CSV written to ${process.argv[csvOutIdx + 1]}`);
+  }
 }
 
 main();

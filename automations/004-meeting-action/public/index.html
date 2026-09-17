@@ -3,166 +3,116 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Meeting → Decision & Action</title>
+<title>회의 → 결정사항 &amp; 할 일</title>
 <style>
-  :root { color-scheme: light dark; }
+  :root {
+    color-scheme: light;
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --border: #dfe3e8;
+    --border-strong: #c7cdd6;
+    --text: #1a1d23;
+    --muted: #5f6672;
+    --navy: #1e3a5f;
+    --navy-hover: #16293f;
+    --urgent-fg: #b3261e; --urgent-bg: #fdeceb;
+    --high-fg: #9a5b00;  --high-bg: #fff4e2;
+    --normal-fg: #2c5aa0; --normal-bg: #eaf1fb;
+    --done-fg: #1e7a34;  --done-bg: #e9f6ed;
+  }
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    padding: 24px 16px 64px;
+    padding: 20px 16px 64px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Pretendard, sans-serif;
-    background: #f7f7f5;
-    color: #1a1a1a;
+    background: var(--bg);
+    color: var(--text);
     line-height: 1.5;
+    font-size: 15px;
   }
-  main {
-    max-width: 760px;
-    margin: 0 auto;
-  }
-  h1 {
-    font-size: 1.6rem;
-    margin-bottom: 4px;
-  }
-  p.desc {
-    color: #555;
-    margin-top: 0;
-    margin-bottom: 24px;
-    white-space: pre-line;
-  }
+  main { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  p.desc { color: var(--muted); margin: 0 0 20px; font-size: 0.95rem; }
   section.card {
-    background: #fff;
-    border: 1px solid #e2e2e0;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 20px;
+    padding: 18px;
+    margin-bottom: 16px;
   }
-  label {
-    font-weight: 600;
-    font-size: 0.9rem;
-    display: block;
-    margin-bottom: 8px;
-  }
-  textarea {
-    width: 100%;
-    min-height: 220px;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid #ddd;
-    font-family: inherit;
-    font-size: 0.95rem;
-    resize: vertical;
-  }
-  button {
-    font-size: 1rem;
-    padding: 10px 20px;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-  }
-  button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-  #analyzeBtn {
-    background: #1e3a5f;
-    color: #fff;
-    width: 100%;
-    margin-top: 12px;
-  }
-  #status {
-    margin-top: 14px;
-    font-size: 0.95rem;
-    color: #444;
-  }
-  #errorBox {
-    margin-top: 14px;
-    padding: 12px 14px;
-    border-radius: 8px;
-    background: #fdecec;
-    color: #a3241f;
-    font-size: 0.92rem;
-  }
-  #resultSection h2 {
-    font-size: 1.15rem;
-    margin: 28px 0 10px;
-    border-bottom: 2px solid #eee;
-    padding-bottom: 6px;
-  }
-  #resultSection h2:first-of-type {
-    margin-top: 0;
-  }
-  #resultSection ul {
-    padding-left: 20px;
-    margin: 0;
-  }
-  #resultSection li {
-    margin-bottom: 8px;
-  }
-  .empty-note {
-    color: #888;
-    font-size: 0.92rem;
-  }
-  table.actions-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.92rem;
-  }
-  table.actions-table th, table.actions-table td {
-    text-align: left;
-    padding: 8px 10px;
-    border-bottom: 1px solid #eee;
-  }
-  table.actions-table th {
-    color: #555;
-    font-weight: 600;
-    font-size: 0.85rem;
-  }
-  .unknown {
-    color: #a3241f;
-  }
-  .btn-row {
+  h2.section-title {
+    font-size: 1.05rem;
+    margin: 0 0 12px;
     display: flex;
-    gap: 10px;
-    margin-top: 20px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-  .btn-row button {
-    background: #f0f0ee;
-    color: #1a1a1a;
-    border: 1px solid #ddd;
-  }
-  #copyFeedback {
-    font-size: 0.85rem;
-    color: #2a7a2a;
-  }
-  .input-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-  .btn-sample {
-    background: #f2f4f7;
-    color: #1a1d23;
-    border: 1px solid #c7cdd6;
-    font-size: 0.85rem;
-    padding: 7px 13px;
-  }
-  .btn-sample:hover { background: #e8ebf0; }
-  [hidden] { display: none !important; }
-  .shell-nav {
-    max-width: 760px;
-    margin: 0 auto 16px;
-    display: flex;
+    align-items: baseline;
     gap: 8px;
-    align-items: center;
     flex-wrap: wrap;
-    font-size: 0.85rem;
   }
-  .shell-nav .brand { font-weight: 700; margin-right: 8px; }
-  .shell-nav a {
-    color: #555;
-    text-decoration: none;
-    padding: 4px 10px;
-    border-radius: 6px;
+  h2.section-title .count { color: var(--muted); font-size: 0.85rem; font-weight: 400; }
+
+  textarea#meetingText {
+    width: 100%; min-height: 220px; padding: 12px 14px; border-radius: 8px;
+    border: 1px solid var(--border-strong); font-family: inherit; font-size: 0.95rem;
+    resize: vertical; background: #fbfcfd; color: var(--text);
   }
-  .shell-nav a.current { background: #1e3a5f; color: #fff; }
+  .field-hint { font-size: 0.83rem; color: var(--muted); margin: 10px 0 0; }
+  button {
+    font-size: 0.95rem; padding: 10px 18px; border-radius: 8px;
+    border: 1px solid transparent; cursor: pointer; font-family: inherit;
+  }
+  button:disabled { opacity: 0.55; cursor: not-allowed; }
+  .btn-primary { background: var(--navy); color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: var(--navy-hover); }
+  .btn-secondary { background: #f2f4f7; color: var(--text); border-color: var(--border-strong); }
+  .btn-secondary:hover:not(:disabled) { background: #e8ebf0; }
+  .btn-small { font-size: 0.83rem; padding: 6px 12px; }
+  #analyzeBtn { width: 100%; margin-top: 14px; font-weight: 600; }
+  .input-actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  #status { margin-top: 12px; font-size: 0.92rem; color: var(--muted); }
+  #errorBox {
+    margin-top: 12px; padding: 12px 14px; border-radius: 8px;
+    background: var(--urgent-bg); color: var(--urgent-fg);
+    font-size: 0.9rem; border: 1px solid #f3c9c5;
+  }
+
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .stat { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; background: #fbfcfd; }
+  .stat .label { font-size: 0.8rem; color: var(--muted); }
+  .stat .value { font-size: 1.4rem; font-weight: 700; line-height: 1.2; }
+  .stat.urgent .value { color: var(--urgent-fg); }
+
+  .badge { display: inline-block; font-size: 0.76rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .badge-높음 { background: var(--urgent-bg); color: var(--urgent-fg); }
+  .badge-보통 { background: var(--normal-bg); color: var(--normal-fg); }
+  .badge-미지정 { background: #eef0f3; color: var(--muted); }
+
+  .item-card { border: 1px solid var(--border); border-left: 4px solid var(--border-strong); border-radius: 8px; padding: 14px; margin-bottom: 10px; }
+  .item-card.risk { border-left-color: var(--high-fg); }
+  .item-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; font-weight: 600; }
+  .item-meta { color: var(--muted); font-size: 0.83rem; margin-bottom: 6px; }
+  .field { margin-top: 8px; }
+  .field .label { font-size: 0.8rem; font-weight: 700; color: var(--muted); display: block; margin-bottom: 3px; }
+  .quote { background: #f7f8fa; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 0.88rem; white-space: pre-wrap; word-break: break-word; }
+  .quote.unverified { color: var(--muted); font-style: italic; }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; align-items: center; }
+  .copy-feedback { font-size: 0.84rem; color: var(--done-fg); font-weight: 600; }
+  [hidden] { display: none !important; }
+
+  .shell-nav { max-width: 960px; margin: 0 auto 16px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 0.82rem; }
+  .shell-nav .brand { font-weight: 700; margin-right: 6px; }
+  .shell-nav a { color: var(--muted); text-decoration: none; padding: 4px 10px; border-radius: 6px; }
+  .shell-nav a:hover { background: #e8ebf0; }
+  .shell-nav a.current { background: var(--navy); color: #fff; }
+
+  @media (max-width: 640px) {
+    body { padding: 16px 12px 48px; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .input-actions button, .btn-row button { flex: 1 1 100%; }
+    .input-actions a { flex: 1 1 100%; }
+    .input-actions a button { width: 100%; }
+    h1 { font-size: 1.3rem; }
+  }
 </style>
 </head>
 <body>
@@ -176,190 +126,289 @@
   <a href="/005/">#005 문의 우선순위</a>
 </nav>
 <main>
-  <h1>Meeting → Decision & Action</h1>
-  <p class="desc">회의 내용을 붙여넣으면 결정사항, 해야 할 일(담당자/기한), 확인이
-필요한 사항을 정리합니다.</p>
+  <h1>회의 → 결정사항 &amp; 할 일</h1>
+  <p class="desc">회의록이나 회의 대화 텍스트를 붙여넣으면 결정사항, 담당자·기한이 있는 할 일, 확인이 필요한 사항만 뽑아 정리합니다.</p>
 
   <section class="card">
-    <label for="meetingText">회의 내용</label>
     <textarea id="meetingText" placeholder="회의록 또는 회의 녹취 텍스트를 붙여넣으세요."></textarea>
+    <p class="field-hint">입력: 회의록 또는 업무 대화 텍스트 (붙여넣기) · 최대 2MB</p>
+
     <div class="input-actions">
-      <button id="loadSampleBtn" type="button" class="btn-sample">샘플 회의록 불러오기</button>
+      <button id="loadSampleBtn" type="button" class="btn-secondary btn-small">샘플 회의록 불러오기</button>
       <a href="sample.txt" download="sample-meeting.txt" style="text-decoration:none">
-        <button type="button" class="btn-sample">샘플 파일 받기</button>
+        <button type="button" class="btn-secondary btn-small">샘플 회의록 다운로드</button>
       </a>
     </div>
-    <button id="analyzeBtn" type="button">회의 결과 정리하기</button>
+
+    <button id="analyzeBtn" type="button" class="btn-primary">회의 결과 정리하기</button>
     <p id="status" hidden></p>
     <div id="errorBox" hidden></div>
   </section>
 
-  <section class="card" id="resultCard" hidden>
-    <div id="resultSection"></div>
+  <section class="card" id="summaryCard" hidden>
+    <h2 class="section-title">전체 현황</h2>
+    <div class="stats" id="statsBox"></div>
+  </section>
+
+  <section class="card" id="decisionsCard" hidden>
+    <h2 class="section-title">결정사항 <span class="count" id="decisionsCount"></span></h2>
+    <div id="decisionsBox"></div>
+  </section>
+
+  <section class="card" id="actionsCard" hidden>
+    <h2 class="section-title">해야 할 일 <span class="count" id="actionsCount"></span></h2>
+    <div id="actionsBox"></div>
+  </section>
+
+  <section class="card" id="issuesCard" hidden>
+    <h2 class="section-title">확인 필요 <span class="count" id="issuesCount"></span></h2>
+    <div id="issuesBox"></div>
+  </section>
+
+  <section class="card" id="footerCard" hidden>
     <div class="btn-row">
-      <button id="copyBtn" type="button">결과 복사</button>
-      <span id="copyFeedback" hidden>복사되었습니다.</span>
+      <button id="copySummaryBtn" type="button" class="btn-secondary">회의 결과 전체 복사</button>
+      <button id="downloadTxtBtn" type="button" class="btn-secondary">TXT 다운로드</button>
+      <button id="downloadCsvBtn" type="button" class="btn-secondary">CSV 다운로드</button>
+      <button id="resetBtn" type="button" class="btn-secondary">다른 회의록 분석하기</button>
+      <span id="copyFeedback" class="copy-feedback" hidden>복사되었습니다.</span>
     </div>
   </section>
 </main>
 
 <script>
 (function () {
-  var textArea = document.getElementById('meetingText');
-  var analyzeBtn = document.getElementById('analyzeBtn');
-  var statusEl = document.getElementById('status');
-  var errorBox = document.getElementById('errorBox');
-  var resultCard = document.getElementById('resultCard');
-  var resultSection = document.getElementById('resultSection');
-  var copyBtn = document.getElementById('copyBtn');
-  var copyFeedback = document.getElementById('copyFeedback');
-  var loadSampleBtn = document.getElementById('loadSampleBtn');
+  var el = function (id) { return document.getElementById(id); };
+  var textarea = el('meetingText');
+  var analyzeBtn = el('analyzeBtn'), statusEl = el('status'), errorBox = el('errorBox');
+  var summaryCard = el('summaryCard'), statsBox = el('statsBox');
+  var decisionsCard = el('decisionsCard'), decisionsBox = el('decisionsBox'), decisionsCount = el('decisionsCount');
+  var actionsCard = el('actionsCard'), actionsBox = el('actionsBox'), actionsCount = el('actionsCount');
+  var issuesCard = el('issuesCard'), issuesBox = el('issuesBox'), issuesCount = el('issuesCount');
+  var footerCard = el('footerCard');
+  var copySummaryBtn = el('copySummaryBtn'), downloadTxtBtn = el('downloadTxtBtn'), downloadCsvBtn = el('downloadCsvBtn'), resetBtn = el('resetBtn');
+  var copyFeedback = el('copyFeedback'), loadSampleBtn = el('loadSampleBtn');
 
-  var UNKNOWN_LABEL = '확인 필요';
-  var isAnalyzing = false;
-  var lastPlainText = null;
+  var isAnalyzing = false, lastData = null;
 
-  function showError(msg) {
-    errorBox.hidden = false;
-    errorBox.textContent = msg;
-  }
-
-  function clearError() {
-    errorBox.hidden = true;
-    errorBox.textContent = '';
-  }
+  function showError(msg) { errorBox.hidden = false; errorBox.textContent = msg; }
+  function clearError() { errorBox.hidden = true; errorBox.textContent = ''; }
+  function hideResults() { summaryCard.hidden = true; decisionsCard.hidden = true; actionsCard.hidden = true; issuesCard.hidden = true; footerCard.hidden = true; }
 
   function setBusy(busy) {
     isAnalyzing = busy;
     analyzeBtn.disabled = busy;
-    textArea.disabled = busy;
     statusEl.hidden = !busy;
     if (busy) statusEl.textContent = '회의 내용을 정리하고 있습니다... (10~30초 정도 걸릴 수 있습니다)';
   }
 
-  function renderResult(result) {
-    resultSection.innerHTML = '';
-
-    var h2d = document.createElement('h2');
-    h2d.textContent = '결정사항';
-    resultSection.appendChild(h2d);
-    if (result.decisions.length === 0) {
-      var pd = document.createElement('p');
-      pd.className = 'empty-note';
-      pd.textContent = '결정사항 없음';
-      resultSection.appendChild(pd);
-    } else {
-      var uld = document.createElement('ul');
-      result.decisions.forEach(function (d) {
-        var li = document.createElement('li');
-        li.textContent = d.content;
-        uld.appendChild(li);
-      });
-      resultSection.appendChild(uld);
-    }
-
-    var h2a = document.createElement('h2');
-    h2a.textContent = '해야 할 일';
-    resultSection.appendChild(h2a);
-    if (result.actions.length === 0) {
-      var pa = document.createElement('p');
-      pa.className = 'empty-note';
-      pa.textContent = '해야 할 일 없음';
-      resultSection.appendChild(pa);
-    } else {
-      var table = document.createElement('table');
-      table.className = 'actions-table';
-      var thead = document.createElement('thead');
-      thead.innerHTML = '<tr><th>할 일</th><th>담당</th><th>기한</th></tr>';
-      table.appendChild(thead);
-      var tbody = document.createElement('tbody');
-      result.actions.forEach(function (a) {
-        var tr = document.createElement('tr');
-        var tdTask = document.createElement('td');
-        tdTask.textContent = a.task;
-        var tdOwner = document.createElement('td');
-        tdOwner.textContent = a.owner || UNKNOWN_LABEL;
-        if (!a.owner) tdOwner.className = 'unknown';
-        var tdDue = document.createElement('td');
-        tdDue.textContent = a.dueDate || UNKNOWN_LABEL;
-        if (!a.dueDate) tdDue.className = 'unknown';
-        tr.appendChild(tdTask);
-        tr.appendChild(tdOwner);
-        tr.appendChild(tdDue);
-        tbody.appendChild(tr);
-      });
-      table.appendChild(tbody);
-      resultSection.appendChild(table);
-    }
-
-    var h2o = document.createElement('h2');
-    h2o.textContent = '확인 필요';
-    resultSection.appendChild(h2o);
-    if (result.openIssues.length === 0) {
-      var po = document.createElement('p');
-      po.className = 'empty-note';
-      po.textContent = '확인이 필요한 사항 없음';
-      resultSection.appendChild(po);
-    } else {
-      var ulo = document.createElement('ul');
-      result.openIssues.forEach(function (o) {
-        var li = document.createElement('li');
-        li.textContent = o.content;
-        ulo.appendChild(li);
-      });
-      resultSection.appendChild(ulo);
-    }
-  }
+  function flashCopied() { copyFeedback.hidden = false; setTimeout(function () { copyFeedback.hidden = true; }, 2000); }
 
   loadSampleBtn.addEventListener('click', function () {
     clearError();
     fetch('sample.txt').then(function (r) { return r.text(); }).then(function (text) {
-      textArea.value = text;
+      textarea.value = text;
     }).catch(function () { showError('샘플을 불러오지 못했습니다.'); });
   });
+
+  function textNode(cls, text) {
+    var d = document.createElement('div');
+    if (cls) d.className = cls;
+    d.textContent = text;
+    return d;
+  }
+
+  function fieldBlock(labelText, node) {
+    var wrap = document.createElement('div');
+    wrap.className = 'field';
+    var lab = document.createElement('span');
+    lab.className = 'label';
+    lab.textContent = labelText;
+    wrap.appendChild(lab);
+    wrap.appendChild(node);
+    return wrap;
+  }
+
+  function evidenceNode(item) {
+    if (item.evidenceVerified) return textNode('quote', item.evidence);
+    return textNode('quote unverified', '원문에서 정확히 일치하는 문장을 찾지 못했습니다.');
+  }
+
+  function badge(label) {
+    var span = document.createElement('span');
+    span.className = 'badge badge-' + label;
+    span.textContent = label;
+    return span;
+  }
+
+  function renderStats(s) {
+    statsBox.innerHTML = '';
+    [
+      ['결정사항', s.decisionsCount, ''],
+      ['할 일', s.actionsCount, ''],
+      ['확인 필요', s.openIssuesCount, 'urgent'],
+      ['담당자 미지정', s.unassignedOwnerCount, ''],
+      ['기한 미지정', s.noDueDateCount, ''],
+      ['후속 확인 필요', s.followUpCount, 'urgent']
+    ].forEach(function (row) {
+      var d = document.createElement('div');
+      d.className = 'stat ' + row[2];
+      d.appendChild(textNode('label', row[0]));
+      d.appendChild(textNode('value', String(row[1]) + '건'));
+      statsBox.appendChild(d);
+    });
+  }
+
+  function renderDecisions(decisions) {
+    decisionsBox.innerHTML = '';
+    decisionsCount.textContent = '(' + decisions.length + '건)';
+    if (decisions.length === 0) {
+      decisionsBox.appendChild(textNode('', '탐지된 결정사항이 없습니다. 회의에서 확정된 내용이 없었거나, 논의만 되고 결정에는 이르지 못했을 수 있습니다.'));
+      return;
+    }
+    decisions.forEach(function (d) {
+      var card = document.createElement('div');
+      card.className = 'item-card' + (d.followUpNeeded ? ' risk' : '');
+      var head = document.createElement('div');
+      head.className = 'item-head';
+      head.appendChild(document.createTextNode(d.content));
+      card.appendChild(head);
+      card.appendChild(textNode('item-meta', '주제: ' + d.topic));
+      card.appendChild(fieldBlock('결정 근거 (원문)', evidenceNode(d)));
+      card.appendChild(fieldBlock('후속 영향', textNode('', d.impact)));
+      if (d.followUpNeeded) card.appendChild(fieldBlock('추가 확인', textNode('', '추가 확인이 필요합니다.')));
+      decisionsBox.appendChild(card);
+    });
+  }
+
+  function actionCopyText(a) {
+    return '[' + a.priority + '] ' + a.task + ' / 담당: ' + (a.owner || '미지정') + ' / 기한: ' + (a.dueDate || '미지정') +
+      ' / 상태: ' + (a.status || '미지정') + '\n다음 행동: ' + a.nextAction;
+  }
+
+  function renderActions(actions) {
+    actionsBox.innerHTML = '';
+    actionsCount.textContent = '(' + actions.length + '건)';
+    if (actions.length === 0) {
+      actionsBox.appendChild(textNode('', '탐지된 할 일이 없습니다.'));
+      return;
+    }
+    actions.forEach(function (a) {
+      var card = document.createElement('div');
+      card.className = 'item-card';
+      var head = document.createElement('div');
+      head.className = 'item-head';
+      head.appendChild(badge(a.priority));
+      head.appendChild(document.createTextNode(a.task));
+      card.appendChild(head);
+      card.appendChild(textNode('item-meta', '담당: ' + (a.owner || '미지정') + ' · 기한: ' + (a.dueDate || '미지정') + ' · 상태: ' + (a.status || '미지정')));
+      card.appendChild(fieldBlock('근거 문장 (원문)', evidenceNode(a)));
+      card.appendChild(fieldBlock('다음 행동', textNode('', a.nextAction)));
+
+      var copyBtn = document.createElement('button');
+      copyBtn.type = 'button';
+      copyBtn.className = 'btn-secondary btn-small';
+      copyBtn.style.marginTop = '8px';
+      copyBtn.textContent = '이 할 일 복사';
+      copyBtn.addEventListener('click', function () {
+        navigator.clipboard.writeText(actionCopyText(a)).then(function () {
+          copyBtn.textContent = '복사됨';
+          setTimeout(function () { copyBtn.textContent = '이 할 일 복사'; }, 2000);
+        }).catch(function () { showError('복사에 실패했습니다.'); });
+      });
+      card.appendChild(copyBtn);
+
+      actionsBox.appendChild(card);
+    });
+  }
+
+  function renderIssues(issues) {
+    issuesBox.innerHTML = '';
+    issuesCount.textContent = '(' + issues.length + '건)';
+    if (issues.length === 0) {
+      issuesBox.appendChild(textNode('', '추가로 확인이 필요한 사항이 없습니다.'));
+      return;
+    }
+    issues.forEach(function (o) {
+      var card = document.createElement('div');
+      card.className = 'item-card risk';
+      card.appendChild(textNode('item-head', o.content));
+      card.appendChild(fieldBlock('근거 (원문)', evidenceNode(o)));
+      card.appendChild(fieldBlock('권장 확인 질문', textNode('', o.recommendedQuestion)));
+      issuesBox.appendChild(card);
+    });
+  }
 
   analyzeBtn.addEventListener('click', function () {
     if (isAnalyzing) return;
     clearError();
-    resultCard.hidden = true;
+    hideResults();
 
-    var text = textArea.value.trim();
+    var text = textarea.value.trim();
     if (!text) {
-      showError('회의 내용을 입력해주세요.');
+      showError('회의 내용을 입력하거나 샘플 회의록을 불러와주세요.');
       return;
     }
 
     setBusy(true);
-
     fetch('analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json; charset=utf-8' },
       body: JSON.stringify({ text: text }),
-    }).then(function (res) {
-      return res.json();
-    }).then(function (data) {
-      if (!data.ok) {
-        showError(data.message || '분석 중 오류가 발생했습니다.');
-        return;
-      }
-      lastPlainText = data.plainText;
-      renderResult(data.result);
-      resultCard.hidden = false;
+    }).then(function (res) { return res.json(); }).then(function (data) {
+      if (!data.ok) { showError(data.message || '분석 중 오류가 발생했습니다.'); return; }
+      lastData = data;
+      renderStats(data.summary);
+      renderDecisions(data.result.decisions);
+      renderActions(data.result.actions);
+      renderIssues(data.result.openIssues);
+      summaryCard.hidden = false;
+      decisionsCard.hidden = false;
+      actionsCard.hidden = false;
+      issuesCard.hidden = false;
+      footerCard.hidden = false;
     }).catch(function () {
       showError('서버와 통신 중 오류가 발생했습니다.');
-    }).finally(function () {
-      setBusy(false);
-    });
+    }).finally(function () { setBusy(false); });
   });
 
-  copyBtn.addEventListener('click', function () {
-    if (!lastPlainText) return;
-    navigator.clipboard.writeText(lastPlainText).then(function () {
-      copyFeedback.hidden = false;
-      setTimeout(function () { copyFeedback.hidden = true; }, 2000);
-    }).catch(function () {
-      showError('복사에 실패했습니다.');
-    });
+  copySummaryBtn.addEventListener('click', function () {
+    if (!lastData) return;
+    navigator.clipboard.writeText(lastData.plainText).then(flashCopied)
+      .catch(function () { showError('복사에 실패했습니다.'); });
+  });
+
+  downloadTxtBtn.addEventListener('click', function () {
+    if (!lastData) return;
+    var blob = new Blob([lastData.plainText], { type: 'text/plain;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'meeting-action-result.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  downloadCsvBtn.addEventListener('click', function () {
+    if (!lastData) return;
+    var blob = new Blob([lastData.resultCsv], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'meeting-action-result.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  resetBtn.addEventListener('click', function () {
+    textarea.value = '';
+    lastData = null;
+    clearError();
+    hideResults();
   });
 })();
 </script>
