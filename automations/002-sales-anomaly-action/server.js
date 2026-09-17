@@ -77,15 +77,23 @@ function requestListener(req, res) {
   }
 
   if (req.method === 'POST' && req.url === '/analyze') {
-    let body = '';
+    const chunks = [];
+    let totalBytes = 0;
     let tooLarge = false;
 
+    // Accumulate raw Buffer chunks and decode ONCE at the end. Decoding each
+    // chunk individually (`body += chunk`, which calls chunk.toString('utf8')
+    // per chunk) corrupts any multi-byte UTF-8 character (e.g. Korean, 3
+    // bytes each) that happens to be split across two TCP chunks — both
+    // halves independently fail to decode and become U+FFFD.
     req.on('data', (chunk) => {
-      body += chunk;
-      if (Buffer.byteLength(body, 'utf8') > MAX_BODY_BYTES) {
+      totalBytes += chunk.length;
+      if (totalBytes > MAX_BODY_BYTES) {
         tooLarge = true;
         req.destroy();
+        return;
       }
+      chunks.push(chunk);
     });
 
     req.on('end', () => {
@@ -93,6 +101,7 @@ function requestListener(req, res) {
         sendJson(res, 200, { ok: false, code: 'FILE_TOO_LARGE', message: userMessage('FILE_TOO_LARGE') });
         return;
       }
+      const body = Buffer.concat(chunks).toString('utf8');
       try {
         const output = runPipeline(body);
         sendJson(res, 200, {
